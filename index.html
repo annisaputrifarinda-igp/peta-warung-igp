@@ -4,127 +4,771 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Peta Warung IGP</title>
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+
 <style>
-html,body,#map{height:100%;margin:0;padding:0}body{font-family:Arial,sans-serif;overflow:hidden}
-#searchBox{position:absolute;z-index:1000;top:12px;left:60px;width:min(520px,calc(100% - 90px));display:flex;gap:6px}
-#search{flex:1;padding:11px 13px;border:1px solid #ccc;border-radius:8px;font-size:15px;outline:none;box-shadow:0 2px 8px rgba(0,0,0,.15)}
-button{padding:10px 13px;border:0;border-radius:8px;background:white;cursor:pointer;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
-button:hover{background:#f0f0f0}
-#status{position:absolute;z-index:1000;left:12px;bottom:12px;padding:7px 10px;border-radius:6px;background:rgba(255,255,255,.95);font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
-.popup-title{font-size:16px;font-weight:bold;margin-bottom:7px}.popup-region{display:inline-block;padding:3px 7px;margin-bottom:7px;border-radius:5px;color:white;font-size:12px;font-weight:bold}.popup-description{font-size:13px;line-height:1.4;max-width:300px;margin-bottom:10px}
-.maps-button{display:inline-block;padding:8px 11px;border-radius:6px;background:#1a73e8;color:white!important;text-decoration:none;font-size:13px;font-weight:bold}.maps-button:hover{background:#1557b0}
-.colored-marker{width:18px;height:18px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid white;box-shadow:0 2px 5px rgba(0,0,0,.35)}.colored-marker-inner{width:6px;height:6px;background:white;border-radius:50%;position:absolute;top:4px;left:4px}
+html,body,#map{height:100%;margin:0;padding:0}
+body{font-family:Arial,sans-serif;overflow:hidden}
+
+#searchBox{
+  position:absolute;z-index:1000;top:12px;left:60px;
+  width:min(560px,calc(100% - 90px));
+  display:flex;gap:6px
+}
+
+#searchWrap{position:relative;flex:1}
+
+#search{
+  width:100%;box-sizing:border-box;
+  padding:11px 13px;border:1px solid #ccc;border-radius:8px;
+  font-size:15px;outline:none;background:white;
+  box-shadow:0 2px 8px rgba(0,0,0,.15)
+}
+
+#search:focus{border-color:#4285f4}
+
+#refresh{
+  padding:10px 13px;border:0;border-radius:8px;background:white;
+  cursor:pointer;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.15)
+}
+
+#refresh:hover{background:#f0f0f0}
+
+#suggestions{
+  position:absolute;top:48px;left:0;right:0;
+  background:white;border-radius:8px;
+  box-shadow:0 3px 14px rgba(0,0,0,.22);
+  overflow:hidden;display:none;max-height:360px;overflow-y:auto
+}
+
+.suggestion{
+  padding:10px 13px;border-bottom:1px solid #eee;
+  cursor:pointer;background:white
+}
+
+.suggestion:last-child{border-bottom:0}
+.suggestion:hover,.suggestion.active{background:#f3f6fb}
+
+.suggestion-name{font-size:14px;font-weight:bold;color:#222}
+.suggestion-region{font-size:12px;color:#666;margin-top:3px}
+.suggestion-address{
+  font-size:12px;color:#777;margin-top:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+
+#status{
+  position:absolute;z-index:1000;left:12px;bottom:12px;
+  padding:7px 10px;border-radius:6px;background:rgba(255,255,255,.95);
+  font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.15)
+}
+
+.popup-title{font-size:16px;font-weight:bold;margin-bottom:7px}
+.popup-region{
+  display:inline-block;padding:3px 7px;margin-bottom:7px;
+  border-radius:5px;color:white;font-size:12px;font-weight:bold
+}
+.popup-description{
+  font-size:13px;line-height:1.4;max-width:300px;margin-bottom:10px
+}
+.maps-button{
+  display:inline-block;padding:8px 11px;border-radius:6px;
+  background:#1a73e8;color:white!important;text-decoration:none;
+  font-size:13px;font-weight:bold
+}
+.maps-button:hover{background:#1557b0}
+
+.colored-marker{
+  width:18px;height:18px;border-radius:50% 50% 50% 0;
+  transform:rotate(-45deg);border:2px solid white;
+  box-shadow:0 2px 5px rgba(0,0,0,.35)
+}
+.colored-marker-inner{
+  width:6px;height:6px;background:white;border-radius:50%;
+  position:absolute;top:4px;left:4px
+}
 .marker-cluster div{font-weight:bold}
+
+@media(max-width:600px){
+  #searchBox{left:50px;width:calc(100% - 62px)}
+  #refresh{padding:10px}
+}
 </style>
 </head>
+
 <body>
+
 <div id="searchBox">
-<input id="search" type="text" placeholder="Cari nama warung / alamat / kabupaten..." autocomplete="off">
-<button id="refresh">↻ Muat ulang</button>
+  <div id="searchWrap">
+    <input id="search"
+      type="text"
+      placeholder="Cari nama warung / alamat / kabupaten..."
+      autocomplete="off">
+    <div id="suggestions"></div>
+  </div>
+  <button id="refresh" title="Muat ulang data">↻ Muat ulang</button>
 </div>
-<div id="map"></div><div id="status">Memuat data...</div>
+
+<div id="map"></div>
+<div id="status">Memuat data...</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
 <script>
-const CSV_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vQP1l3fVYi1dWu0g2UkLdpwcqosl7SUMGqDhibVGx6caqQwHKWWEx-ldWfLxrewHWlSiIm46Bv2uHIb/pub?output=csv";
+const CSV_URL =
+"https://docs.google.com/spreadsheets/d/e/2PACX-1vQP1l3fVYi1dWu0g2UkLdpwcqosl7SUMGqDhibVGx6caqQwHKWWEx-ldWfLxrewHWlSiIm46Bv2uHIb/pub?output=csv";
 
 const map=L.map("map",{preferCanvas:true}).setView([-4.8,105.4],7);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap contributors"}).addTo(map);
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+  maxZoom:19,
+  attribution:"&copy; OpenStreetMap contributors"
+}).addTo(map);
 
 const clusterGroup=L.markerClusterGroup({
-chunkedLoading:true,chunkInterval:100,chunkDelay:10,removeOutsideVisibleBounds:true,
-maxClusterRadius:55,disableClusteringAtZoom:15,spiderfyOnMaxZoom:true,
-showCoverageOnHover:false,zoomToBoundsOnClick:true
+  chunkedLoading:true,
+  chunkInterval:100,
+  chunkDelay:10,
+  removeOutsideVisibleBounds:true,
+  maxClusterRadius:55,
+  disableClusteringAtZoom:15,
+  spiderfyOnMaxZoom:true,
+  showCoverageOnHover:false,
+  zoomToBoundsOnClick:true
 });
+
 map.addLayer(clusterGroup);
 
-let allRows=[],regionColors={};
-const colors=["#e53935","#1e88e5","#43a047","#8e24aa","#fb8c00","#00acc1","#6d4c41","#3949ab","#d81b60","#00897b","#f4511e","#5e35b1","#7cb342","#039be5","#c0ca33","#ffb300","#546e7a","#8d6e63","#26a69a","#ef5350"];
+let allRows=[];
+let regionColors={};
+let selectedSuggestion=-1;
+
+const colors=[
+  "#e53935","#1e88e5","#43a047","#8e24aa","#fb8c00",
+  "#00acc1","#6d4c41","#3949ab","#d81b60","#00897b",
+  "#f4511e","#5e35b1","#7cb342","#039be5","#c0ca33",
+  "#ffb300","#546e7a","#8d6e63","#26a69a","#ef5350"
+];
 
 function clean(v){return String(v??"").trim()}
-function normalizeHeader(v){return clean(v).toLowerCase().replace(/\s+/g," ").trim()}
-function num(v){
-if(v==null)return NaN;let s=String(v).trim().replace(/\s/g,"");if(!s)return NaN;
-if(s.includes(",")&&!s.includes("."))s=s.replace(",",".");s=s.replace(/[^0-9.,-]/g,"");
-if(s.includes(",")&&s.includes(".")){const lc=s.lastIndexOf(","),ld=s.lastIndexOf(".");if(lc>ld)s=s.replace(/\./g,"").replace(",",".");else s=s.replace(/,/g,"")}
-return Number(s)
+
+function normalizeHeader(v){
+  return clean(v).toLowerCase().replace(/\s+/g," ").trim()
 }
-function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+
+function num(v){
+  if(v==null)return NaN;
+  let s=String(v).trim().replace(/\s/g,"");
+  if(!s)return NaN;
+  if(s.includes(",")&&!s.includes("."))s=s.replace(",",".");
+  s=s.replace(/[^0-9.,-]/g,"");
+  if(s.includes(",")&&s.includes(".")){
+    const lc=s.lastIndexOf(","),ld=s.lastIndexOf(".");
+    if(lc>ld)s=s.replace(/\./g,"").replace(",",".");
+    else s=s.replace(/,/g,"");
+  }
+  return Number(s)
+}
+
+function esc(v){
+  return String(v??"").replace(/[&<>"']/g,c=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",
+    '"':"&quot;","'":"&#039;"
+  }[c]))
+}
 
 function parseCSV(text){
-const rows=[];let row=[],cell="",quoted=false;
-for(let i=0;i<text.length;i++){const c=text[i],n=text[i+1];
-if(c=='"'){if(quoted&&n=='"'){cell+='"';i++}else quoted=!quoted}
-else if(c==","&&!quoted){row.push(cell);cell=""}
-else if((c=="\n"||c=="\r")&&!quoted){if(c=="\r"&&n=="\n")i++;row.push(cell);cell="";if(row.some(v=>clean(v)!==""))rows.push(row);row=[]}
-else cell+=c}
-if(cell!==""||row.length){row.push(cell);if(row.some(v=>clean(v)!==""))rows.push(row)}
-return rows
+  const rows=[];
+  let row=[],cell="",quoted=false;
+
+  for(let i=0;i<text.length;i++){
+    const c=text[i],n=text[i+1];
+
+    if(c=='"'){
+      if(quoted&&n=='"'){cell+='"';i++}
+      else quoted=!quoted;
+    }
+    else if(c==","&&!quoted){
+      row.push(cell);cell="";
+    }
+    else if((c=="\n"||c=="\r")&&!quoted){
+      if(c=="\r"&&n=="\n")i++;
+      row.push(cell);cell="";
+      if(row.some(v=>clean(v)!==""))rows.push(row);
+      row=[];
+    }
+    else cell+=c;
+  }
+
+  if(cell!==""||row.length){
+    row.push(cell);
+    if(row.some(v=>clean(v)!==""))rows.push(row);
+  }
+
+  return rows;
 }
 
 function regionColor(region){
-region=clean(region)||"Tidak diketahui";
-if(!regionColors[region])regionColors[region]=colors[Object.keys(regionColors).length%colors.length];
-return regionColors[region]
+  region=clean(region)||"Tidak diketahui";
+
+  if(!regionColors[region]){
+    regionColors[region]=
+      colors[Object.keys(regionColors).length%colors.length];
+  }
+
+  return regionColors[region];
 }
 
-function icon(color){
-return L.divIcon({className:"",html:'<div class="colored-marker" style="background:'+color+'"><div class="colored-marker-inner"></div></div>',iconSize:[22,22],iconAnchor:[11,22],popupAnchor:[0,-20]})
+function markerIcon(color){
+  return L.divIcon({
+    className:"",
+    html:
+      '<div class="colored-marker" style="background:'+color+'">'+
+      '<div class="colored-marker-inner"></div>'+
+      '</div>',
+    iconSize:[22,22],
+    iconAnchor:[11,22],
+    popupAnchor:[0,-20]
+  });
 }
 
 function makeMarker(item){
-const color=regionColor(item.region);
-const mapsUrl="https://www.google.com/maps?q="+encodeURIComponent(item.lat+","+item.lng);
-const m=L.marker([item.lat,item.lng],{icon:icon(color)});
-m.bindPopup(
-'<div class="popup-title">'+esc(item.name)+'</div>'+
-'<div class="popup-region" style="background:'+color+'">'+esc(item.region||"Tidak diketahui")+'</div>'+
-(item.description?'<div class="popup-description">'+esc(item.description)+'</div>':'')+
-'<a class="maps-button" href="'+mapsUrl+'" target="_blank" rel="noopener noreferrer">📍 Buka di Google Maps</a>'
-);
-return m
+  const color=regionColor(item.region);
+
+  const mapsUrl=
+    "https://www.google.com/maps?q="+
+    encodeURIComponent(item.lat+","+item.lng);
+
+  const marker=L.marker(
+    [item.lat,item.lng],
+    {icon:markerIcon(color)}
+  );
+
+  marker.bindPopup(
+    '<div class="popup-title">'+esc(item.name)+'</div>'+
+    '<div class="popup-region" style="background:'+color+'">'+
+      esc(item.region||"Tidak diketahui")+
+    '</div>'+
+    (item.description
+      ? '<div class="popup-description">'+
+        esc(item.description)+
+        '</div>'
+      : '')+
+    '<a class="maps-button" href="'+mapsUrl+
+    '" target="_blank" rel="noopener noreferrer">'+
+    '📍 Buka di Google Maps</a>'
+  );
+
+  return marker;
 }
 
 async function loadData(){
-const status=document.getElementById("status");status.textContent="Memuat data Google Sheets...";
-try{
-const response=await fetch(CSV_URL+"&_="+Date.now(),{cache:"no-store"});
-if(!response.ok)throw Error("HTTP "+response.status);
-const table=parseCSV(await response.text());if(!table.length)throw Error("Data Google Sheets kosong");
-const headers=table[0].map(normalizeHeader);
-function idx(...names){for(const n of names){const i=headers.indexOf(normalizeHeader(n));if(i!=-1)return i}return -1}
-const ni=idx("name","nama"),la=idx("latitude_benar","latitude benar"),lo=idx("longitude_benar","longitude benar"),di=idx("description","deskripsi"),ri=idx("kabupaten/kota","kabupaten","kota");
-if(ni==-1||la==-1||lo==-1)throw Error("Kolom name, latitude_benar atau longitude_benar tidak ditemukan.");
-const data=[];
-for(let i=1;i<table.length;i++){
-const r=table[i],name=clean(r[ni]),lat=num(r[la]),lng=num(r[lo]),description=di>=0?clean(r[di]):"",region=ri>=0?clean(r[ri]):"Tidak diketahui";
-if(!name||!Number.isFinite(lat)||!Number.isFinite(lng))continue;
-if(lat<-11||lat>7||lng<95||lng>142)continue;
-data.push({name,lat,lng,description,region})
-}
-allRows=data;renderMarkers(allRows);status.textContent="Menampilkan "+allRows.length.toLocaleString("id-ID")+" warung"
-}catch(e){console.error(e);status.textContent="Gagal memuat data: "+e.message}
+  const status=document.getElementById("status");
+
+  status.textContent="Memuat data Google Sheets...";
+
+  try{
+    const response=await fetch(
+      CSV_URL+"&_="+Date.now(),
+      {cache:"no-store"}
+    );
+
+    if(!response.ok)
+      throw Error("HTTP "+response.status);
+
+    const table=parseCSV(await response.text());
+
+    if(!table.length)
+      throw Error("Data Google Sheets kosong");
+
+    const headers=table[0].map(normalizeHeader);
+
+    function idx(...names){
+      for(const n of names){
+        const i=headers.indexOf(normalizeHeader(n));
+        if(i!==-1)return i;
+      }
+      return -1;
+    }
+
+    const nameIndex=idx("name","nama");
+    const latIndex=idx("latitude_benar","latitude benar");
+    const lngIndex=idx("longitude_benar","longitude benar");
+    const descIndex=idx("description","deskripsi");
+    const regionIndex=idx(
+      "kabupaten/kota",
+      "kabupaten",
+      "kota"
+    );
+
+    if(
+      nameIndex===-1||
+      latIndex===-1||
+      lngIndex===-1
+    ){
+      throw Error(
+        "Kolom name, latitude_benar atau longitude_benar tidak ditemukan."
+      );
+    }
+
+    const data=[];
+
+    for(let i=1;i<table.length;i++){
+      const row=table[i];
+
+      const name=clean(row[nameIndex]);
+      const lat=num(row[latIndex]);
+      const lng=num(row[lngIndex]);
+
+      const description=
+        descIndex>=0?clean(row[descIndex]):"";
+
+      const region=
+        regionIndex>=0
+          ?clean(row[regionIndex])
+          :"Tidak diketahui";
+
+      if(
+        !name||
+        !Number.isFinite(lat)||
+        !Number.isFinite(lng)
+      )continue;
+
+      if(
+        lat<-11||
+        lat>7||
+        lng<95||
+        lng>142
+      )continue;
+
+      data.push({
+        name,
+        lat,
+        lng,
+        description,
+        region,
+        searchText:(
+          name+" "+description+" "+region
+        ).toLowerCase()
+      });
+    }
+
+    allRows=data;
+
+    renderMarkers(allRows);
+
+    status.textContent=
+      "Menampilkan "+
+      allRows.length.toLocaleString("id-ID")+
+      " warung";
+
+  }catch(error){
+    console.error(error);
+    status.textContent=
+      "Gagal memuat data: "+error.message;
+  }
 }
 
 function renderMarkers(data){
-clusterGroup.clearLayers();regionColors={};
-clusterGroup.addLayers(data.map(makeMarker));
-if(data.length>0&&data.length<50){const b=L.latLngBounds(data.map(x=>[x.lat,x.lng]));if(b.isValid())map.fitBounds(b,{padding:[40,40],maxZoom:14})}
+  clusterGroup.clearLayers();
+  regionColors={};
+
+  clusterGroup.addLayers(
+    data.map(makeMarker)
+  );
+
+  if(data.length>0&&data.length<50){
+    const bounds=L.latLngBounds(
+      data.map(x=>[x.lat,x.lng])
+    );
+
+    if(bounds.isValid()){
+      map.fitBounds(
+        bounds,
+        {padding:[40,40],maxZoom:14}
+      );
+    }
+  }
 }
 
-document.getElementById("search").addEventListener("input",function(){
-const q=clean(this.value).toLowerCase();
-if(!q){renderMarkers(allRows);map.setView([-4.8,105.4],7);document.getElementById("status").textContent="Menampilkan "+allRows.length.toLocaleString("id-ID")+" warung";return}
-const results=allRows.filter(x=>(x.name+" "+x.description+" "+x.region).toLowerCase().includes(q));
-renderMarkers(results);document.getElementById("status").textContent="Ditemukan "+results.length.toLocaleString("id-ID")+" warung"
-});
-document.getElementById("refresh").addEventListener("click",loadData);
+/* =====================================================
+   AUTOCOMPLETE / SARAN WARUNG
+   ===================================================== */
+
+const searchInput=
+  document.getElementById("search");
+
+const suggestionsBox=
+  document.getElementById("suggestions");
+
+function hideSuggestions(){
+  suggestionsBox.style.display="none";
+  suggestionsBox.innerHTML="";
+  selectedSuggestion=-1;
+}
+
+function showSuggestions(keyword){
+
+  keyword=clean(keyword).toLowerCase();
+
+  if(!keyword||allRows.length===0){
+    hideSuggestions();
+    return;
+  }
+
+  /*
+    Cari berdasarkan nama, alamat/deskripsi,
+    atau Kabupaten/Kota.
+  */
+
+  const starts=[];
+  const contains=[];
+
+  for(const item of allRows){
+
+    const name=item.name.toLowerCase();
+    const region=item.region.toLowerCase();
+    const desc=item.description.toLowerCase();
+
+    if(name.startsWith(keyword)){
+      starts.push(item);
+    }
+    else if(
+      name.includes(keyword)||
+      region.includes(keyword)||
+      desc.includes(keyword)
+    ){
+      contains.push(item);
+    }
+
+    /*
+      Maksimal 8 saran supaya ringan.
+    */
+
+    if(starts.length>=8)break;
+  }
+
+  let results=starts;
+
+  if(results.length<8){
+    results=results.concat(
+      contains.slice(0,8-results.length)
+    );
+  }
+
+  /*
+    Hapus duplikat berdasarkan nama + koordinat.
+  */
+
+  const seen=new Set();
+
+  results=results.filter(item=>{
+    const key=
+      item.name+"|"+
+      item.lat+"|"+
+      item.lng;
+
+    if(seen.has(key))return false;
+
+    seen.add(key);
+    return true;
+  });
+
+  if(!results.length){
+    suggestionsBox.innerHTML=
+      '<div class="suggestion">'+
+      '<div class="suggestion-name">'+
+      'Tidak ada warung yang cocok</div>'+
+      '</div>';
+
+    suggestionsBox.style.display="block";
+    return;
+  }
+
+  suggestionsBox.innerHTML=
+    results.map((item,index)=>{
+
+      const address=
+        item.description
+        ? item.description
+        : "Klik untuk melihat lokasi";
+
+      return `
+        <div class="suggestion"
+             data-index="${allRows.indexOf(item)}">
+          <div class="suggestion-name">
+            📍 ${esc(item.name)}
+          </div>
+          <div class="suggestion-region">
+            ${esc(item.region||"Tidak diketahui")}
+          </div>
+          <div class="suggestion-address">
+            ${esc(address)}
+          </div>
+        </div>
+      `;
+
+    }).join("");
+
+  suggestionsBox.style.display="block";
+
+  suggestionsBox
+    .querySelectorAll(".suggestion[data-index]")
+    .forEach(el=>{
+
+      el.addEventListener(
+        "click",
+        function(){
+
+          const index=
+            Number(this.dataset.index);
+
+          selectSuggestion(index);
+
+        }
+      );
+
+    });
+
+  selectedSuggestion=-1;
+}
+
+function selectSuggestion(index){
+
+  const item=allRows[index];
+
+  if(!item)return;
+
+  searchInput.value=item.name;
+
+  hideSuggestions();
+
+  /*
+    Tampilkan hanya warung yang dipilih
+    supaya marker langsung terlihat.
+  */
+
+  renderMarkers([item]);
+
+  /*
+    Zoom langsung ke lokasi warung.
+  */
+
+  map.setView(
+    [item.lat,item.lng],
+    16,
+    {animate:true}
+  );
+
+  /*
+    Marker dibuat ulang oleh renderMarkers.
+    Ambil marker pertama dan buka popup.
+  */
+
+  setTimeout(()=>{
+
+    let target=null;
+
+    clusterGroup.eachLayer(layer=>{
+      if(
+        layer._latlng &&
+        Math.abs(layer._latlng.lat-item.lat)<0.000001 &&
+        Math.abs(layer._latlng.lng-item.lng)<0.000001
+      ){
+        target=layer;
+      }
+    });
+
+    if(target){
+      target.openPopup();
+    }
+
+  },400);
+
+  document.getElementById("status").textContent=
+    "Lokasi: "+item.name;
+}
+
+/* =====================================================
+   INPUT PENCARIAN
+   ===================================================== */
+
+searchInput.addEventListener(
+  "input",
+  function(){
+
+    const keyword=
+      clean(this.value).toLowerCase();
+
+    showSuggestions(keyword);
+
+    /*
+      Jangan langsung menghilangkan semua marker
+      saat user baru mengetik.
+      Kita tetap menampilkan hasil pencarian
+      di peta jika sudah ada kata kunci.
+    */
+
+    if(!keyword){
+      renderMarkers(allRows);
+      map.setView([-4.8,105.4],7);
+
+      document.getElementById("status").textContent=
+        "Menampilkan "+
+        allRows.length.toLocaleString("id-ID")+
+        " warung";
+
+      return;
+    }
+
+    const results=
+      allRows.filter(item=>
+        item.searchText.includes(keyword)
+      );
+
+    renderMarkers(results);
+
+    document.getElementById("status").textContent=
+      "Ditemukan "+
+      results.length.toLocaleString("id-ID")+
+      " warung";
+
+  }
+);
+
+/* =====================================================
+   KEYBOARD NAVIGATION
+   ===================================================== */
+
+searchInput.addEventListener(
+  "keydown",
+  function(e){
+
+    const items=
+      suggestionsBox.querySelectorAll(
+        ".suggestion[data-index]"
+      );
+
+    if(!items.length)return;
+
+    if(e.key==="ArrowDown"){
+      e.preventDefault();
+
+      selectedSuggestion=
+        Math.min(
+          selectedSuggestion+1,
+          items.length-1
+        );
+
+      items.forEach(x=>
+        x.classList.remove("active")
+      );
+
+      items[selectedSuggestion]
+        .classList.add("active");
+
+      items[selectedSuggestion]
+        .scrollIntoView({
+          block:"nearest"
+        });
+    }
+
+    else if(e.key==="ArrowUp"){
+      e.preventDefault();
+
+      selectedSuggestion=
+        Math.max(
+          selectedSuggestion-1,
+          0
+        );
+
+      items.forEach(x=>
+        x.classList.remove("active")
+      );
+
+      items[selectedSuggestion]
+        .classList.add("active");
+
+      items[selectedSuggestion]
+        .scrollIntoView({
+          block:"nearest"
+        });
+    }
+
+    else if(
+      e.key==="Enter"&&
+      selectedSuggestion>=0
+    ){
+      e.preventDefault();
+
+      const index=
+        Number(
+          items[selectedSuggestion]
+            .dataset.index
+        );
+
+      selectSuggestion(index);
+    }
+
+    else if(e.key==="Escape"){
+      hideSuggestions();
+    }
+
+  }
+);
+
+/*
+  Klik di luar kotak pencarian
+  -> tutup saran.
+*/
+
+document.addEventListener(
+  "click",
+  function(e){
+
+    if(
+      !document
+        .getElementById("searchBox")
+        .contains(e.target)
+    ){
+      hideSuggestions();
+    }
+
+  }
+);
+
+/* =====================================================
+   MUAT ULANG
+   ===================================================== */
+
+document
+  .getElementById("refresh")
+  .addEventListener(
+    "click",
+    function(){
+
+      hideSuggestions();
+      searchInput.value="";
+      loadData();
+
+    }
+  );
+
+/* =====================================================
+   LOAD AWAL
+   ===================================================== */
+
 loadData();
+
+/*
+  Cek perubahan Google Sheets setiap 5 menit.
+*/
+
 setInterval(loadData,300000);
 </script>
+
 </body>
 </html>
