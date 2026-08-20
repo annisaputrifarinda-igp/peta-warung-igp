@@ -110,14 +110,34 @@ const CSV_URL =
 const map = L.map("map", { preferCanvas:true }).setView([-4.8,105.4], 9);
 
 const street = L.tileLayer(
-  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-  {maxZoom:19, attribution:"&copy; OpenStreetMap contributors"}
+  "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+  {
+    maxZoom:20,
+    maxNativeZoom:20,
+    updateWhenIdle:true,
+    keepBuffer:3,
+    attribution:"&copy; OpenStreetMap contributors &copy; CARTO"
+  }
 ).addTo(map);
 
 const satellite = L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-  {maxZoom:19, attribution:"Tiles &copy; Esri"}
+  {
+    maxZoom:19,
+    maxNativeZoom:19,
+    updateWhenIdle:true,
+    keepBuffer:3,
+    attribution:"Tiles &copy; Esri"
+  }
 );
+
+// Jika tile jalan gagal dimuat, coba lagi otomatis saat peta berubah.
+street.on("tileerror",()=>{
+  setTimeout(()=>street.redraw(),500);
+});
+satellite.on("tileerror",()=>{
+  setTimeout(()=>satellite.redraw(),500);
+});
 
 const layer = L.markerClusterGroup({
   chunkedLoading:true,
@@ -129,6 +149,10 @@ const layer = L.markerClusterGroup({
   showCoverageOnHover:false
 });
 map.addLayer(layer);
+
+// Membantu tile menggambar ulang dengan benar setelah zoom/resize.
+map.on("zoomend",()=>map.invalidateSize({pan:false}));
+window.addEventListener("resize",()=>map.invalidateSize({pan:false}));
 
 let allRows = [];
 let visibleRows = [];
@@ -501,7 +525,7 @@ function updateLegend(){
     vals.map(k=>`<div><i style="background:${colorFor(k)}"></i>${esc(k)}</div>`).join("");
 }
 
-const oldPopulate=populatekabupaten;
+const oldPopulate=populateKabupaten;
 populateKabupaten=function(){
   oldPopulate();
   updateLegend();
