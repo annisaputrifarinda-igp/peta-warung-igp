@@ -165,7 +165,7 @@ let lastRenderedFilter = "";
 const status = document.getElementById("status");
 const search = document.getElementById("search");
 const suggestions = document.getElementById("suggestions");
-const KabupatenSelect = document.getElementById("kabupaten");
+const kabupatenSelect = document.getElementById("kabupaten");
 
 function esc(v){
   return String(v ?? "").replace(/[&<>"']/g, c => ({
@@ -203,6 +203,13 @@ function parseCSV(text){
   return rows.slice(1).map(r=>{
     const o={};
     headers.forEach((h,i)=>o[h]=(r[i] ?? "").trim());
+
+    // Samakan beberapa variasi nama kolom Google Sheets menjadi nama internal.
+    const kab = o["kabupaten / kota"] || o["kabupaten/kota"] || o["kabupaten"] || o["kota"] || "";
+    if(kab) o.kabupaten = kab;
+    const kec = o["kecamatan"] || "";
+    if(kec) o.kecamatan = kec;
+
     return o;
   });
 }
