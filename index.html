@@ -141,7 +141,7 @@ let lastRenderedFilter = "";
 const status = document.getElementById("status");
 const search = document.getElementById("search");
 const suggestions = document.getElementById("suggestions");
-const kabupatenSelect = document.getElementById("kabupaten");
+const KabupatenSelect = document.getElementById("kabupaten");
 
 function esc(v){
   return String(v ?? "").replace(/[&<>"']/g, c => ({
@@ -207,7 +207,7 @@ function getCoord(r){
 }
 
 function colorFor(k){
-  const key=k || "Tanpa kabupaten";
+  const key=k || "Tanpa Kabupaten";
   if(!colors[key]){
     const hue=(Object.keys(colors).length*47)%360;
     colors[key]=`hsl(${hue},70%,45%)`;
@@ -240,7 +240,7 @@ function popupHtml(r){
   return `
     <div style="min-width:220px;max-width:300px">
       <b style="font-size:16px">${name}</b>
-      <div style="margin:6px 0"><b>kabupaten:</b> ${kec}</div>
+      <div style="margin:6px 0"><b>Kabupaten:</b> ${kec}</div>
       ${desc ? `<div style="margin-bottom:8px">${desc}</div>` : ""}
       <a href="${maps}" target="_blank" rel="noopener"
          style="display:inline-block;background:#1a73e8;color:white;
@@ -276,7 +276,7 @@ function render(list, fit=false){
   }
 }
 
-function populatekabupaten(){
+function populateKabupaten(){
   const vals=[...new Set(allRows
     .map(r=>r.kabupaten)
     .filter(Boolean))]
@@ -321,7 +321,7 @@ function showSuggestions(){
     const d=document.createElement("div");
     d.className="suggestion";
     d.innerHTML=`<b>${esc(r.name || "Warung")}</b>
-      <small>🏘️ ${esc(r.kabupaten || "kabupaten belum diisi")}</small>`;
+      <small>🏘️ ${esc(r.kabupaten || "Kabupaten belum diisi")}</small>`;
     d.onclick=()=>selectSuggestion(r);
     suggestions.appendChild(d);
   });
@@ -439,7 +439,7 @@ document.getElementById("nearby").onclick=()=>{
       : `${(r._distance/1000).toFixed(1)} km`;
 
     d.innerHTML=`<b>${esc(r.name||"Warung")}</b>
-      <small>🏘️ ${esc(r.kabupaten||"kabupaten belum diisi")} · 📏 ${distance}</small>`;
+      <small>🏘️ ${esc(r.kabupaten||"Kabupaten belum diisi")} · 📏 ${distance}</small>`;
 
     d.onclick=()=>{
       const c=getCoord(r);
@@ -471,7 +471,7 @@ async function loadData(){
       return r.name && Number.isFinite(c.lat) && Number.isFinite(c.lng);
     });
 
-    populatekabupaten();
+    populateKabupaten();
     applyFilter(false);
 
     status.textContent=`Data siap · ${allRows.length.toLocaleString("id-ID")} warung`;
@@ -486,7 +486,7 @@ async function loadData(){
 const legend=L.control({position:"bottomright"});
 legend.onAdd=function(){
   const div=L.DomUtil.create("div","legend");
-  div.innerHTML="<b>🏘️ kabupaten</b><br>";
+  div.innerHTML="<b>🏘️ Kabupaten</b><br>";
   return div;
 };
 legend.addTo(map);
@@ -497,12 +497,12 @@ function updateLegend(){
   const vals=[...new Set(allRows.map(r=>r.kabupaten).filter(Boolean))]
     .sort((a,b)=>a.localeCompare(b,"id"));
 
-  el.innerHTML="<b>🏘️ kabupaten</b><br>"+
+  el.innerHTML="<b>🏘️ Kabupaten</b><br>"+
     vals.map(k=>`<div><i style="background:${colorFor(k)}"></i>${esc(k)}</div>`).join("");
 }
 
 const oldPopulate=populatekabupaten;
-populatekabupaten=function(){
+populateKabupaten=function(){
   oldPopulate();
   updateLegend();
 };
