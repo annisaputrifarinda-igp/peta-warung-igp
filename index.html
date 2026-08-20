@@ -1,62 +1,1012 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Peta Warung IGP</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<style>
-html,body,#map{height:100%;margin:0}
-#search{position:absolute;z-index:1000;top:12px;left:60px;width:min(420px,calc(100% - 90px));padding:11px;border:1px solid #ccc;border-radius:8px;box-sizing:border-box;background:#fff;font-size:15px}
-#status{position:absolute;z-index:1000;left:12px;bottom:12px;padding:7px 10px;border-radius:6px;background:rgba(255,255,255,.92);font:13px Arial}
-#refresh{position:absolute;z-index:1000;top:62px;left:60px;padding:8px 11px;border:0;border-radius:7px;background:#fff;box-shadow:0 2px 7px rgba(0,0,0,.2)}
-</style>
-</head>
-<body>
-<input id="search" placeholder="Cari nama warung / alamat...">
-<button id="refresh">↻ Muat ulang</button>
-<div id="map"></div>
-<div id="status">Memuat data...</div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-const CSV_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vQP1l3fVYi1dWu0g2UkLdpwcqosl7SUMGqDhibVGx6caqQwHKWWEx-ldWfLxrewHWlSiIm46Bv2uHIb/pub?output=csv";
-const map=L.map("map").setView([-4.8,105.4],9);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap contributors"}).addTo(map);
-const layer=L.layerGroup().addTo(map); let allRows=[];
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-function parseCSV(t){
- let rows=[],row=[],cell="",q=false;
- for(let i=0;i<t.length;i++){let c=t[i],n=t[i+1];
-  if(c=='"'){if(q&&n=='"'){cell+='"';i++;}else q=!q;}
-  else if(c==','&&!q){row.push(cell);cell="";}
-  else if((c=='\n'||c=='\r')&&!q){if(c=='\r'&&n=='\n')i++;row.push(cell);cell="";if(row.some(v=>v.trim()))rows.push(row);row=[];}
-  else cell+=c;
- }
- if(cell||row.length){row.push(cell);rows.push(row)} return rows;
-}
-function esc(s){return String(s||"").replace(/[&<>"']/g,x=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[x]));}
-function render(filter=""){
- layer.clearLayers(); let q=filter.toLowerCase().trim(), shown=0,bounds=[];
- allRows.forEach(r=>{
-  let name=(r[0]||"").trim(),desc=(r[3]||"").trim(),lat=parseFloat((r[4]||"").replace(",", ".")),lon=parseFloat((r[5]||"").replace(",", "."));
-  if(!name||!Number.isFinite(lat)||!Number.isFinite(lon)||lat<-90||lat>90||lon<-180||lon>180)return;
-  if(q&&!((name+" "+desc).toLowerCase().includes(q)))return;
-  let m=L.marker([lat,lon]).addTo(layer);m.bindPopup("<b>"+esc(name)+"</b>"+(desc?"<br>"+esc(desc):""));
-  bounds.push([lat,lon]);shown++;
- });
- document.getElementById("status").textContent=shown.toLocaleString("id-ID")+" marker ditampilkan";
- if(!q&&bounds.length)map.fitBounds(bounds,{padding:[20,20],maxZoom:13});
-}
-async function loadData(){
- document.getElementById("status").textContent="Memuat data Google Sheets...";
- try{
-  let res=await fetch(CSV_URL+"&_="+Date.now(),{cache:"no-store"}); if(!res.ok)throw Error(res.status);
-  allRows=parseCSV(await res.text()).slice(1); render(document.getElementById("search").value);
- }catch(e){console.error(e);document.getElementById("status").textContent="Gagal memuat data. Klik Muat ulang.";}
-}
-document.getElementById("search").oninput=e=>render(e.target.value);
-document.getElementById("refresh").onclick=loadData;
-loadData(); setInterval(loadData,300000);
-</script>
+  <title>Peta Warung IGP</title>
+
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+
+  <!-- MarkerCluster -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
+  />
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
+  />
+
+  <style>
+    html, body, #map {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    /* Kotak pencarian */
+    #searchBox {
+      position: absolute;
+      z-index: 1000;
+      top: 12px;
+      left: 60px;
+      width: min(420px, calc(100% - 90px));
+      display: flex;
+      gap: 6px;
+    }
+
+    #search {
+      flex: 1;
+      padding: 11px 13px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 15px;
+      outline: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    #refresh {
+      padding: 9px 12px;
+      border: 0;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+      font-size: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    #refresh:hover {
+      background: #f0f0f0;
+    }
+
+    /* Status */
+    #status {
+      position: absolute;
+      z-index: 1000;
+      left: 12px;
+      bottom: 12px;
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.95);
+      font-size: 13px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    /* Popup */
+    .popup-title {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 7px;
+    }
+
+    .popup-region {
+      display: inline-block;
+      padding: 3px 7px;
+      margin-bottom: 7px;
+      border-radius: 5px;
+      color: white;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .popup-description {
+      font-size: 13px;
+      line-height: 1.4;
+      max-width: 280px;
+    }
+
+    /* Marker berwarna */
+    .colored-marker {
+      width: 18px;
+      height: 18px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      border: 2px solid white;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.35);
+    }
+
+    .colored-marker-inner {
+      width: 6px;
+      height: 6px;
+      background: white;
+      border-radius: 50%;
+      position: absolute;
+      top: 4px;
+      left: 4px;
+    }
+
+    /* Cluster */
+    .marker-cluster-small {
+      background-color: rgba(51, 136, 255, 0.35);
+    }
+
+    .marker-cluster-small div {
+      background-color: rgba(51, 136, 255, 0.8);
+      color: white;
+    }
+
+    .marker-cluster-medium {
+      background-color: rgba(255, 153, 0, 0.35);
+    }
+
+    .marker-cluster-medium div {
+      background-color: rgba(255, 153, 0, 0.85);
+      color: white;
+    }
+
+    .marker-cluster-large {
+      background-color: rgba(220, 50, 50, 0.35);
+    }
+
+    .marker-cluster-large div {
+      background-color: rgba(220, 50, 50, 0.85);
+      color: white;
+    }
+
+    .marker-cluster div {
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="searchBox">
+    <input
+      id="search"
+      type="text"
+      placeholder="Cari nama warung / alamat..."
+    >
+
+    <button id="refresh" title="Muat ulang data">
+      ↻ Muat ulang
+    </button>
+  </div>
+
+  <div id="map"></div>
+
+  <div id="status">
+    Memuat data...
+  </div>
+
+  <!-- Leaflet -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- MarkerCluster -->
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+  <script>
+
+    /* =========================================================
+       GOOGLE SHEETS
+       ========================================================= */
+
+    const CSV_URL =
+      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQP1l3fVYi1dWu0g2UkLdpwcqosl7SUMGqDhibVGx6caqQwHKWWEx-ldWfLxrewHWlSiIm46Bv2uHIb/pub?output=csv";
+
+
+    /* =========================================================
+       PETA
+       ========================================================= */
+
+    const map = L.map("map", {
+      preferCanvas: true,
+      zoomControl: true
+    }).setView([-4.8, 105.4], 7);
+
+
+    L.tileLayer(
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap contributors"
+      }
+    ).addTo(map);
+
+
+    /* =========================================================
+       CLUSTER
+       ========================================================= */
+
+    let clusterGroup = L.markerClusterGroup({
+
+      chunkedLoading: true,
+
+      chunkInterval: 100,
+
+      chunkDelay: 10,
+
+      removeOutsideVisibleBounds: true,
+
+      maxClusterRadius: 55,
+
+      disableClusteringAtZoom: 15,
+
+      spiderfyOnMaxZoom: true,
+
+      showCoverageOnHover: false,
+
+      zoomToBoundsOnClick: true
+
+    });
+
+    map.addLayer(clusterGroup);
+
+
+    /* =========================================================
+       DATA
+       ========================================================= */
+
+    let allRows = [];
+
+    let regionColors = {};
+
+    const colorList = [
+      "#e53935",
+      "#1e88e5",
+      "#43a047",
+      "#8e24aa",
+      "#fb8c00",
+      "#00acc1",
+      "#6d4c41",
+      "#3949ab",
+      "#d81b60",
+      "#00897b",
+      "#f4511e",
+      "#5e35b1",
+      "#7cb342",
+      "#039be5",
+      "#c0ca33",
+      "#ffb300",
+      "#546e7a",
+      "#8d6e63",
+      "#26a69a",
+      "#ef5350"
+    ];
+
+
+    /* =========================================================
+       BANTUAN
+       ========================================================= */
+
+    function cleanText(value) {
+      return String(value ?? "").trim();
+    }
+
+
+    function normalizeHeader(value) {
+      return cleanText(value)
+        .toLowerCase()
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+
+    function parseNumber(value) {
+
+      if (value === null || value === undefined) {
+        return NaN;
+      }
+
+      let s = String(value).trim();
+
+      if (!s) {
+        return NaN;
+      }
+
+      /*
+        Menangani angka seperti:
+        -4.9953786
+        105.5349567
+
+        dan juga format spreadsheet Indonesia
+        jika diperlukan.
+      */
+
+      s = s.replace(/\s/g, "");
+
+      /*
+        Kalau ada koma sebagai desimal
+      */
+      if (s.includes(",") && !s.includes(".")) {
+        s = s.replace(",", ".");
+      }
+
+      /*
+        Hapus karakter selain angka,
+        minus, titik dan koma
+      */
+      s = s.replace(/[^0-9.,-]/g, "");
+
+      /*
+        Kalau terdapat titik dan koma,
+        diasumsikan titik/koma ribuan.
+      */
+      if (s.includes(",") && s.includes(".")) {
+
+        const lastComma = s.lastIndexOf(",");
+        const lastDot = s.lastIndexOf(".");
+
+        if (lastComma > lastDot) {
+          s = s.replace(/\./g, "");
+          s = s.replace(",", ".");
+        } else {
+          s = s.replace(/,/g, "");
+        }
+      }
+
+      return Number(s);
+    }
+
+
+    /* =========================================================
+       PARSER CSV
+       ========================================================= */
+
+    function parseCSV(text) {
+
+      const rows = [];
+
+      let row = [];
+
+      let cell = "";
+
+      let insideQuotes = false;
+
+
+      for (let i = 0; i < text.length; i++) {
+
+        const char = text[i];
+
+        const next = text[i + 1];
+
+
+        if (char === '"') {
+
+          if (insideQuotes && next === '"') {
+
+            cell += '"';
+
+            i++;
+
+          } else {
+
+            insideQuotes = !insideQuotes;
+
+          }
+
+        }
+
+        else if (char === "," && !insideQuotes) {
+
+          row.push(cell);
+
+          cell = "";
+
+        }
+
+        else if (
+          (char === "\n" || char === "\r") &&
+          !insideQuotes
+        ) {
+
+          if (char === "\r" && next === "\n") {
+            i++;
+          }
+
+          row.push(cell);
+
+          cell = "";
+
+          if (row.some(v => cleanText(v) !== "")) {
+            rows.push(row);
+          }
+
+          row = [];
+
+        }
+
+        else {
+
+          cell += char;
+
+        }
+
+      }
+
+
+      row.push(cell);
+
+      if (row.some(v => cleanText(v) !== "")) {
+        rows.push(row);
+      }
+
+
+      return rows;
+    }
+
+
+    /* =========================================================
+       WARNA KABUPATEN / KOTA
+       ========================================================= */
+
+    function getRegionColor(region) {
+
+      region = cleanText(region);
+
+      if (!region) {
+        region = "Tidak diketahui";
+      }
+
+
+      if (!regionColors[region]) {
+
+        const index =
+          Object.keys(regionColors).length %
+          colorList.length;
+
+        regionColors[region] =
+          colorList[index];
+
+      }
+
+
+      return regionColors[region];
+    }
+
+
+    /* =========================================================
+       ICON MARKER
+       ========================================================= */
+
+    function createMarkerIcon(color) {
+
+      return L.divIcon({
+
+        className: "",
+
+        html:
+          '<div class="colored-marker" style="background:' +
+          color +
+          '">' +
+          '<div class="colored-marker-inner"></div>' +
+          '</div>',
+
+        iconSize: [22, 22],
+
+        iconAnchor: [11, 22],
+
+        popupAnchor: [0, -20]
+
+      });
+
+    }
+
+
+    /* =========================================================
+       BUAT MARKER
+       ========================================================= */
+
+    function createMarker(item) {
+
+      const color =
+        getRegionColor(item.region);
+
+
+      const marker =
+        L.marker(
+          [item.lat, item.lng],
+          {
+            icon: createMarkerIcon(color)
+          }
+        );
+
+
+      const region =
+        item.region || "Tidak diketahui";
+
+
+      marker.bindPopup(
+
+        '<div class="popup-title">' +
+        escapeHTML(item.name) +
+        '</div>' +
+
+        '<div class="popup-region" style="background:' +
+        color +
+        '">' +
+        escapeHTML(region) +
+        '</div>' +
+
+        '<div class="popup-description">' +
+        escapeHTML(item.description) +
+        '</div>'
+
+      );
+
+
+      marker._warungData = item;
+
+
+      return marker;
+    }
+
+
+    /* =========================================================
+       ESCAPE HTML
+       ========================================================= */
+
+    function escapeHTML(value) {
+
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+    }
+
+
+    /* =========================================================
+       BACA DATA
+       ========================================================= */
+
+    async function loadData() {
+
+      const status =
+        document.getElementById("status");
+
+
+      status.textContent =
+        "Memuat data...";
+
+
+      try {
+
+        const response =
+          await fetch(
+            CSV_URL +
+            "&_=" +
+            Date.now(),
+            {
+              cache: "no-store"
+            }
+          );
+
+
+        if (!response.ok) {
+
+          throw new Error(
+            "Gagal mengambil Google Sheets"
+          );
+
+        }
+
+
+        const text =
+          await response.text();
+
+
+        const table =
+          parseCSV(text);
+
+
+        if (!table.length) {
+
+          throw new Error(
+            "Data Google Sheets kosong"
+          );
+
+        }
+
+
+        /*
+          Baris pertama = header
+        */
+
+        const headers =
+          table[0].map(normalizeHeader);
+
+
+        const indexOf = (...names) => {
+
+          for (const name of names) {
+
+            const index =
+              headers.indexOf(
+                normalizeHeader(name)
+              );
+
+            if (index !== -1) {
+              return index;
+            }
+
+          }
+
+          return -1;
+
+        };
+
+
+        const nameIndex =
+          indexOf("name", "nama");
+
+        const latIndex =
+          indexOf(
+            "latitude_benar",
+            "latitude benar"
+          );
+
+        const lngIndex =
+          indexOf(
+            "longitude_benar",
+            "longitude benar"
+          );
+
+        const descriptionIndex =
+          indexOf(
+            "description",
+            "deskripsi"
+          );
+
+        const regionIndex =
+          indexOf(
+            "kabupaten/kota",
+            "kabupaten",
+            "kota"
+          );
+
+
+        if (
+          nameIndex === -1 ||
+          latIndex === -1 ||
+          lngIndex === -1
+        ) {
+
+          throw new Error(
+            "Kolom name, latitude_benar atau longitude_benar tidak ditemukan."
+          );
+
+        }
+
+
+        const data = [];
+
+
+        for (
+          let i = 1;
+          i < table.length;
+          i++
+        ) {
+
+          const row = table[i];
+
+
+          const name =
+            cleanText(
+              row[nameIndex]
+            );
+
+
+          const lat =
+            parseNumber(
+              row[latIndex]
+            );
+
+
+          const lng =
+            parseNumber(
+              row[lngIndex]
+            );
+
+
+          const description =
+            descriptionIndex >= 0
+              ? cleanText(
+                  row[descriptionIndex]
+                )
+              : "";
+
+
+          const region =
+            regionIndex >= 0
+              ? cleanText(
+                  row[regionIndex]
+                )
+              : "Tidak diketahui";
+
+
+          /*
+            Abaikan baris yang koordinatnya tidak valid.
+          */
+
+          if (
+            !name ||
+            !Number.isFinite(lat) ||
+            !Number.isFinite(lng)
+          ) {
+
+            continue;
+
+          }
+
+
+          /*
+            Pastikan koordinat masih masuk
+            wilayah Indonesia secara umum.
+          */
+
+          if (
+            lat < -11 ||
+            lat > 7 ||
+            lng < 95 ||
+            lng > 142
+          ) {
+
+            continue;
+
+          }
+
+
+          data.push({
+
+            name: name,
+
+            lat: lat,
+
+            lng: lng,
+
+            description: description,
+
+            region: region
+
+          });
+
+        }
+
+
+        allRows = data;
+
+
+        renderMarkers(allRows);
+
+
+        status.textContent =
+          "Menampilkan " +
+          allRows.length +
+          " warung";
+
+
+      }
+
+      catch (error) {
+
+        console.error(error);
+
+
+        status.textContent =
+          "Gagal memuat data: " +
+          error.message;
+
+      }
+
+    }
+
+
+    /* =========================================================
+       TAMPILKAN MARKER
+       ========================================================= */
+
+    function renderMarkers(data) {
+
+      /*
+        Hapus marker lama
+      */
+
+      clusterGroup.clearLayers();
+
+
+      /*
+        Reset warna wilayah
+      */
+
+      regionColors = {};
+
+
+      /*
+        Buat marker secara bertahap
+        supaya browser tidak terlalu berat.
+      */
+
+      const markers = [];
+
+
+      for (
+        const item of data
+      ) {
+
+        markers.push(
+          createMarker(item)
+        );
+
+      }
+
+
+      clusterGroup.addLayers(
+        markers
+      );
+
+
+      /*
+        Kalau hasil pencarian sedikit,
+        otomatis tampilkan area hasil.
+      */
+
+      if (
+        data.length > 0 &&
+        data.length < 50
+      ) {
+
+        const bounds =
+          L.latLngBounds(
+            data.map(
+              item => [
+                item.lat,
+                item.lng
+              ]
+            )
+          );
+
+
+        if (bounds.isValid()) {
+
+          map.fitBounds(
+            bounds,
+            {
+              padding: [40, 40],
+              maxZoom: 14
+            }
+          );
+
+        }
+
+      }
+
+    }
+
+
+    /* =========================================================
+       PENCARIAN
+       ========================================================= */
+
+    const searchInput =
+      document.getElementById(
+        "search"
+      );
+
+
+    searchInput.addEventListener(
+      "input",
+      function () {
+
+        const keyword =
+          cleanText(
+            this.value
+          ).toLowerCase();
+
+
+        /*
+          Kalau kosong,
+          tampilkan semua data.
+        */
+
+        if (!keyword) {
+
+          renderMarkers(
+            allRows
+          );
+
+
+          map.setView(
+            [-4.8, 105.4],
+            7
+          );
+
+
+          document.getElementById(
+            "status"
+          ).textContent =
+            "Menampilkan " +
+            allRows.length +
+            " warung";
+
+
+          return;
+
+        }
+
+
+        /*
+          Cari berdasarkan:
+          - nama
+          - deskripsi
+          - kabupaten/kota
+        */
+
+        const results =
+          allRows.filter(
+            item => {
+
+              const combined =
+                (
+                  item.name +
+                  " " +
+                  item.description +
+                  " " +
+                  item.region
+                ).toLowerCase();
+
+
+              return combined.includes(
+                keyword
+              );
+
+            }
+          );
+
+
+        renderMarkers(
+          results
+        );
+
+
+        document.getElementById(
+          "status"
+        ).textContent =
+          "Ditemukan " +
+          results.length +
+          " warung";
+
+      }
+    );
+
+
+    /* =========================================================
+       TOMBOL MUAT ULANG
+       ========================================================= */
+
+    document
+      .getElementById("refresh")
+      .addEventListener(
+        "click",
+        function () {
+
+          loadData();
+
+        }
+      );
+
+
+    /* =========================================================
+       LOAD PERTAMA
+       ========================================================= */
+
+    loadData();
+
+  </script>
+
 </body>
 </html>
