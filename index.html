@@ -42,7 +42,7 @@ button,select{
   box-shadow:0 2px 8px rgba(0,0,0,.2);cursor:pointer;font-size:14px;
 }
 button:hover{background:#f3f3f3}
-#kecamatan{max-width:220px}
+#kabupaten{max-width:220px}
 
 #status{
   position:absolute;z-index:1000;left:58px;bottom:14px;
@@ -79,13 +79,13 @@ button:hover{background:#f3f3f3}
 <div id="map"></div>
 
 <div id="searchBox">
-  <input id="search" autocomplete="off" placeholder="Cari nama warung / alamat / kecamatan...">
+  <input id="search" autocomplete="off" placeholder="Cari nama warung / alamat / kabupaten...">
   <div id="suggestions"></div>
 </div>
 
 <div id="controls">
-  <select id="kecamatan">
-    <option value="">🏘️ Semua Kecamatan</option>
+  <select id="kabupaten">
+    <option value="">🏘️ Semua Kabupaten / Kota</option>
   </select>
   <button id="locate">📍 Lokasi Saya</button>
   <button id="nearby">🔎 Warung Terdekat</button>
@@ -141,7 +141,7 @@ let lastRenderedFilter = "";
 const status = document.getElementById("status");
 const search = document.getElementById("search");
 const suggestions = document.getElementById("suggestions");
-const kecamatanSelect = document.getElementById("kecamatan");
+const kabupatenSelect = document.getElementById("kabupaten");
 
 function esc(v){
   return String(v ?? "").replace(/[&<>"']/g, c => ({
@@ -207,7 +207,7 @@ function getCoord(r){
 }
 
 function colorFor(k){
-  const key=k || "Tanpa Kecamatan";
+  const key=k || "Tanpa kabupaten";
   if(!colors[key]){
     const hue=(Object.keys(colors).length*47)%360;
     colors[key]=`hsl(${hue},70%,45%)`;
@@ -233,14 +233,14 @@ function makeIcon(color){
 function popupHtml(r){
   const {lat,lng}=getCoord(r);
   const name=esc(r.name || "Warung");
-  const kec=esc(r.kecamatan || "Tidak diisi");
+  const kec=esc(r.kabupaten || "Tidak diisi");
   const desc=esc(r.description || "");
   const maps=`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
 
   return `
     <div style="min-width:220px;max-width:300px">
       <b style="font-size:16px">${name}</b>
-      <div style="margin:6px 0"><b>Kecamatan:</b> ${kec}</div>
+      <div style="margin:6px 0"><b>kabupaten:</b> ${kec}</div>
       ${desc ? `<div style="margin-bottom:8px">${desc}</div>` : ""}
       <a href="${maps}" target="_blank" rel="noopener"
          style="display:inline-block;background:#1a73e8;color:white;
@@ -259,7 +259,7 @@ function render(list, fit=false){
     const {lat,lng}=getCoord(r);
     if(!Number.isFinite(lat)||!Number.isFinite(lng)) return;
 
-    const kec=r.kecamatan || "";
+    const kec=r.kabupaten || "";
     const marker=L.marker([lat,lng],{icon:makeIcon(colorFor(kec))});
     marker.bindPopup(popupHtml(r));
     marker._row=r;
@@ -276,27 +276,27 @@ function render(list, fit=false){
   }
 }
 
-function populateKecamatan(){
+function populatekabupaten(){
   const vals=[...new Set(allRows
-    .map(r=>r.kecamatan)
+    .map(r=>r.kabupaten)
     .filter(Boolean))]
     .sort((a,b)=>a.localeCompare(b,"id"));
 
-  kecamatanSelect.innerHTML='<option value="">🏘️ Semua Kecamatan</option>';
+  kabupatenSelect.innerHTML='<option value="">🏘️ Semua Kabupaten / Kota</option>';
   vals.forEach(v=>{
     const o=document.createElement("option");
     o.value=v; o.textContent=v;
-    kecamatanSelect.appendChild(o);
+    kabupatenSelect.appendChild(o);
   });
 }
 
 function applyFilter(fit=false){
-  const selected=normalize(kecamatanSelect.value);
+  const selected=normalize(kabupatenSelect.value);
   const q=normalize(search.value);
 
   const filtered=allRows.filter(r=>{
-    const kecOk=!selected || normalize(r.kecamatan)===selected;
-    const text=[r.name,r.description,r.kecamatan].map(normalize).join(" ");
+    const kecOk=!selected || normalize(r.kabupaten)===selected;
+    const text=[r.name,r.description,r.kabupaten].map(normalize).join(" ");
     const searchOk=!q || text.includes(q);
     return kecOk && searchOk;
   });
@@ -311,7 +311,7 @@ function showSuggestions(){
   if(!q){ suggestions.style.display="none"; return; }
 
   const matches=allRows.filter(r=>{
-    const text=[r.name,r.description,r.kecamatan].map(normalize).join(" ");
+    const text=[r.name,r.description,r.kabupaten].map(normalize).join(" ");
     return text.includes(q);
   }).slice(0,10);
 
@@ -321,7 +321,7 @@ function showSuggestions(){
     const d=document.createElement("div");
     d.className="suggestion";
     d.innerHTML=`<b>${esc(r.name || "Warung")}</b>
-      <small>🏘️ ${esc(r.kecamatan || "Kecamatan belum diisi")}</small>`;
+      <small>🏘️ ${esc(r.kabupaten || "kabupaten belum diisi")}</small>`;
     d.onclick=()=>selectSuggestion(r);
     suggestions.appendChild(d);
   });
@@ -332,7 +332,7 @@ function selectSuggestion(r){
   search.value=r.name || "";
   suggestions.style.display="none";
 
-  if(r.kecamatan) kecamatanSelect.value=r.kecamatan;
+  if(r.kabupaten) kabupatenSelect.value=r.kabupaten;
   applyFilter(false);
 
   const {lat,lng}=getCoord(r);
@@ -368,7 +368,7 @@ document.addEventListener("click",e=>{
     suggestions.style.display="none";
 });
 
-kecamatanSelect.addEventListener("change",()=>applyFilter(true));
+kabupatenSelect.addEventListener("change",()=>applyFilter(true));
 
 document.getElementById("refresh").onclick=loadData;
 
@@ -439,7 +439,7 @@ document.getElementById("nearby").onclick=()=>{
       : `${(r._distance/1000).toFixed(1)} km`;
 
     d.innerHTML=`<b>${esc(r.name||"Warung")}</b>
-      <small>🏘️ ${esc(r.kecamatan||"Kecamatan belum diisi")} · 📏 ${distance}</small>`;
+      <small>🏘️ ${esc(r.kabupaten||"kabupaten belum diisi")} · 📏 ${distance}</small>`;
 
     d.onclick=()=>{
       const c=getCoord(r);
@@ -471,7 +471,7 @@ async function loadData(){
       return r.name && Number.isFinite(c.lat) && Number.isFinite(c.lng);
     });
 
-    populateKecamatan();
+    populatekabupaten();
     applyFilter(false);
 
     status.textContent=`Data siap · ${allRows.length.toLocaleString("id-ID")} warung`;
@@ -482,11 +482,11 @@ async function loadData(){
   }
 }
 
-/* Legenda warna Kecamatan */
+/* Legenda warna kabupaten */
 const legend=L.control({position:"bottomright"});
 legend.onAdd=function(){
   const div=L.DomUtil.create("div","legend");
-  div.innerHTML="<b>🏘️ Kecamatan</b><br>";
+  div.innerHTML="<b>🏘️ kabupaten</b><br>";
   return div;
 };
 legend.addTo(map);
@@ -494,15 +494,15 @@ legend.addTo(map);
 function updateLegend(){
   const el=document.querySelector(".legend");
   if(!el) return;
-  const vals=[...new Set(allRows.map(r=>r.kecamatan).filter(Boolean))]
+  const vals=[...new Set(allRows.map(r=>r.kabupaten).filter(Boolean))]
     .sort((a,b)=>a.localeCompare(b,"id"));
 
-  el.innerHTML="<b>🏘️ Kecamatan</b><br>"+
+  el.innerHTML="<b>🏘️ kabupaten</b><br>"+
     vals.map(k=>`<div><i style="background:${colorFor(k)}"></i>${esc(k)}</div>`).join("");
 }
 
-const oldPopulate=populateKecamatan;
-populateKecamatan=function(){
+const oldPopulate=populatekabupaten;
+populatekabupaten=function(){
   oldPopulate();
   updateLegend();
 };
