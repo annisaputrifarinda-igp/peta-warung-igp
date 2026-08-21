@@ -128,13 +128,14 @@ const CSV_URL =
 const map = L.map("map", { preferCanvas:true }).setView([-4.8,105.4], 9);
 
 const street = L.tileLayer(
-  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
   {
     maxZoom:19,
     maxNativeZoom:19,
     updateWhenIdle:true,
-    keepBuffer:4,
-    attribution:"&copy; OpenStreetMap contributors"
+    keepBuffer:3,
+    attribution:
+      '&copy; OpenStreetMap contributors &copy; CARTO'
   }
 ).addTo(map);
 
