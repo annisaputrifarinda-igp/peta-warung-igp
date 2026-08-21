@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Peta Warung IGP - Peta Stabil</title>
-<meta name="version" content="2026-08-21-mapfix-v2">
+<title>Peta Warung IGP - Nama Warung di Peta</title>
+<meta name="version" content="2026-08-21-labels-v3">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
@@ -208,6 +208,65 @@ button:active{transform:translateY(1px)}
   50%{transform:scale(1.12)}
 }
 
+/* =========================
+   LABEL NAMA WARUNG DI PETA
+   ========================= */
+.warung-label-icon{
+  background:transparent;
+  border:0;
+}
+.warung-label-wrap{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  white-space:nowrap;
+  transform:translate(-2px,-2px);
+  pointer-events:auto;
+}
+.warung-label-pin{
+  width:20px;
+  height:20px;
+  flex:0 0 20px;
+  border-radius:50% 50% 50% 0;
+  transform:rotate(-45deg);
+  border:2px solid #fff;
+  box-shadow:0 2px 5px rgba(0,0,0,.35);
+  position:relative;
+}
+.warung-label-pin::after{
+  content:"";
+  position:absolute;
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:#fff;
+  left:5px;
+  top:5px;
+}
+.warung-label-text{
+  max-width:210px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  font-size:13px;
+  line-height:16px;
+  font-weight:700;
+  color:#2b8a00;
+  text-shadow:
+    -1px -1px 0 #fff,
+     1px -1px 0 #fff,
+    -1px  1px 0 #fff,
+     1px  1px 0 #fff,
+     0 0 3px #fff;
+  cursor:pointer;
+}
+.warung-label-icon.selected .warung-label-text{
+  color:#d35400;
+  font-size:14px;
+}
+@media(max-width:700px){
+  .warung-label-text{max-width:150px;font-size:12px;line-height:14px}
+}
+
 @media(max-width:700px){
   #topPanel{
     left:52px;
@@ -408,9 +467,20 @@ map.addLayer(layer);
 /* Layer khusus marker hasil pencarian */
 const selectedLayer = L.layerGroup().addTo(map);
 
+/* Layer label nama warung. Pada zoom jauh cluster tetap dipakai agar ringan;
+   mulai zoom 14 label nama ditampilkan seperti peta warung pada contoh. */
+const labelLayer = L.layerGroup();
+const LABEL_ZOOM = 14;
+let labelsVisible = false;
+
 /* Perbaikan zoom/resize */
 map.on("zoomend",()=>{
   map.invalidateSize({pan:false});
+  updateMapDisplay();
+});
+
+map.on("moveend",()=>{
+  if(labelsVisible) renderLabels();
 });
 
 window.addEventListener("resize",()=>{
@@ -592,6 +662,73 @@ function makeIcon(color){
   });
 }
 
+function makeLabelIcon(r){
+  const {lat,lng}=getCoord(r);
+  const kab=r.kabupaten || "";
+  const color=colorFor(kab);
+  const name=esc(r.name || "Warung");
+
+  return L.divIcon({
+    className:"warung-label-icon",
+    html:`<div class="warung-label-wrap" title="${name}">
+      <div class="warung-label-pin" style="background:${color}"></div>
+      <div class="warung-label-text">${name}</div>
+    </div>`,
+    iconSize:[240,28],
+    iconAnchor:[10,14],
+    popupAnchor:[0,-18]
+  });
+}
+
+function renderLabels(){
+  labelLayer.clearLayers();
+  if(!allRows.length) return;
+
+  const selected=normalize(kabupatenSelect.value);
+  const bounds=map.getBounds().pad(0.35);
+  const list=allRows.filter(r=>{
+    if(selected && normalize(r.kabupaten)!==selected) return false;
+    const c=getCoord(r);
+    return Number.isFinite(c.lat) && Number.isFinite(c.lng) && bounds.contains([c.lat,c.lng]);
+  });
+
+  const markers=[];
+  list.forEach(r=>{
+    const c=getCoord(r);
+    if(!Number.isFinite(c.lat)||!Number.isFinite(c.lng)) return;
+
+    const m=L.marker([c.lat,c.lng],{
+      icon:makeLabelIcon(r),
+      zIndexOffset:100
+    });
+    m._row=r;
+    m.bindPopup(popupHtml(r),{
+      autoPan:true,
+      autoPanPaddingTopLeft:[20,180],
+      autoPanPaddingBottomRight:[20,40]
+    });
+    markers.push(m);
+  });
+
+  markers.forEach(m=>labelLayer.addLayer(m));
+}
+
+function updateMapDisplay(){
+  const shouldShow=map.getZoom()>=LABEL_ZOOM;
+
+  if(shouldShow===labelsVisible) return;
+  labelsVisible=shouldShow;
+
+  if(labelsVisible){
+    if(map.hasLayer(layer)) map.removeLayer(layer);
+    renderLabels();
+    if(!map.hasLayer(labelLayer)) labelLayer.addTo(map);
+  }else{
+    if(map.hasLayer(labelLayer)) map.removeLayer(labelLayer);
+    if(!map.hasLayer(layer)) layer.addTo(map);
+  }
+}
+
 function makeSearchIcon(){
   return L.divIcon({
     className:"",
@@ -670,6 +807,17 @@ function render(list,fit=false){
   });
 
   layer.addLayers(markers);
+
+  if(map.getZoom()>=LABEL_ZOOM){
+    labelsVisible=true;
+    renderLabels();
+    if(map.hasLayer(layer)) map.removeLayer(layer);
+    if(!map.hasLayer(labelLayer)) labelLayer.addTo(map);
+  }else{
+    labelsVisible=false;
+    if(map.hasLayer(labelLayer)) map.removeLayer(labelLayer);
+    if(!map.hasLayer(layer)) layer.addTo(map);
+  }
 
   status.textContent=
     `Menampilkan ${markers.length.toLocaleString("id-ID")} warung`;
@@ -844,6 +992,7 @@ function selectSuggestion(r){
 
   selectedMarker._row=r;
   selectedMarker.addTo(selectedLayer);
+  if(selectedLayer.bringToFront) selectedLayer.bringToFront();
 
   setTimeout(()=>{
     if(selectedMarker){
