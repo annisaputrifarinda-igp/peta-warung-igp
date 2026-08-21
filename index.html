@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Peta Warung IGP</title>
+<title>Peta Warung IGP - Peta Stabil</title>
+<meta name="version" content="2026-08-21-mapfix-v2">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
@@ -305,85 +306,87 @@ const CSV_URL =
    ========================= */
 const map = L.map("map", {
   preferCanvas:true,
-  zoomControl:true
+  zoomControl:true,
+  zoomAnimation:true,
+  fadeAnimation:true,
+  markerZoomAnimation:true
 }).setView([-4.8,105.4],9);
 
-/* =========================
-   PETA DASAR YANG LEBIH TAHAN ERROR
-   - Jalan: Carto -> OpenStreetMap fallback
-   - Satelit: Esri -> ArcGIS alternate host fallback
-   Tile yang gagal langsung mencoba sumber kedua.
-   ========================= */
-const StreetFallbackLayer = L.TileLayer.extend({
-  getTileUrl:function(coords){
-    return L.Util.template(this._url, L.extend({s:this._getSubdomain(coords)}, coords));
-  },
-  createTile:function(coords,done){
-    const tile=document.createElement('img');
-    let triedFallback=false;
-    tile.alt='';
-    tile.setAttribute('role','presentation');
-    tile.onload=()=>done(null,tile);
-    tile.onerror=()=>{
-      if(triedFallback){
-        done(null,tile);
-        return;
-      }
-      triedFallback=true;
-      tile.src=L.Util.template(this.options.fallbackUrl, L.extend({s:this.options.fallbackSubdomain||'a'}, coords));
-    };
-    tile.src=this.getTileUrl(coords);
-    return tile;
-  }
-});
-
-const SatelliteFallbackLayer = L.TileLayer.extend({
-  createTile:function(coords,done){
-    const tile=document.createElement('img');
-    let triedFallback=false;
-    tile.alt='';
-    tile.setAttribute('role','presentation');
-    tile.onload=()=>done(null,tile);
-    tile.onerror=()=>{
-      if(triedFallback){
-        done(null,tile);
-        return;
-      }
-      triedFallback=true;
-      tile.src=L.Util.template(this.options.fallbackUrl, coords);
-    };
-    tile.src=L.Util.template(this._url, coords);
-    return tile;
-  }
-});
-
-const street = new StreetFallbackLayer(
-  "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+/* =====================================================
+   SISTEM PETA BARU
+   Tidak memakai Carto dan tidak memakai placeholder tile.
+   Peta jalan utama = OpenStreetMap.
+   Peta jalan cadangan = Esri World Street Map.
+   Satelit = Esri World Imagery.
+   ===================================================== */
+const streetPrimary = L.tileLayer(
+  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
   {
-    subdomains:'abcd',
-    fallbackUrl:"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    fallbackSubdomain:'a',
-    maxZoom:20,
+    maxZoom:19,
     maxNativeZoom:19,
+    subdomains:["a","b","c"],
     updateWhenIdle:false,
-    updateWhenZooming:true,
     keepBuffer:2,
-    attribution:'&copy; OpenStreetMap contributors &copy; CARTO'
-  }
-).addTo(map);
-
-const satellite = new SatelliteFallbackLayer(
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-  {
-    fallbackUrl:"https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    maxZoom:20,
-    maxNativeZoom:19,
-    updateWhenIdle:false,
-    updateWhenZooming:true,
-    keepBuffer:2,
-    attribution:'Tiles &copy; Esri'
+    attribution:"&copy; OpenStreetMap contributors",
+    crossOrigin:true
   }
 );
+
+const streetFallback = L.tileLayer(
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+  {
+    maxZoom:19,
+    maxNativeZoom:19,
+    updateWhenIdle:false,
+    keepBuffer:2,
+    attribution:"&copy; Esri"
+  }
+);
+
+const satellite = L.tileLayer(
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  {
+    maxZoom:19,
+    maxNativeZoom:19,
+    updateWhenIdle:false,
+    keepBuffer:2,
+    attribution:"&copy; Esri"
+  }
+);
+
+let activeStreet = streetPrimary;
+let satelliteOn = false;
+let streetErrorCount = 0;
+let satelliteErrorCount = 0;
+let mapLayerSwitching = false;
+
+/* Mulai langsung dengan OSM */
+streetPrimary.addTo(map);
+
+/* Jika OSM benar-benar gagal, pindah SATU KALI ke Esri Street.
+   Tidak melakukan redraw tanpa akhir karena itu dapat menghasilkan
+   halaman abu-abu ketika server tile sedang bermasalah. */
+streetPrimary.on("tileerror",()=>{
+  streetErrorCount++;
+  if(!satelliteOn && streetErrorCount >= 3 && activeStreet===streetPrimary){
+    activeStreet=streetFallback;
+    if(map.hasLayer(streetPrimary)) map.removeLayer(streetPrimary);
+    streetFallback.addTo(map);
+    status.textContent="Peta jalan dialihkan ke server cadangan...";
+  }
+});
+
+satellite.on("tileerror",()=>{
+  satelliteErrorCount++;
+  if(satelliteErrorCount >= 3 && satelliteOn){
+    /* Jangan biarkan layar abu-abu. Kembalikan ke peta jalan yang aktif. */
+    satelliteOn=false;
+    if(map.hasLayer(satellite)) map.removeLayer(satellite);
+    activeStreet.addTo(map);
+    document.getElementById("satellite").textContent="🛰️ Satelit";
+    status.textContent="Satelit gagal dimuat. Peta jalan dikembalikan.";
+  }
+});
 
 /* =========================
    CLUSTER
@@ -423,7 +426,7 @@ let userMarker = null;
 let userCircle = null;
 let selectedMarker = null;
 let colors = {};
-let satelliteOn = false;
+/* satelliteOn dideklarasikan pada sistem peta baru di atas. */
 
 const status = document.getElementById("status");
 const search = document.getElementById("search");
@@ -904,21 +907,17 @@ document.getElementById("satellite").onclick=()=>{
   satelliteOn=!satelliteOn;
 
   if(satelliteOn){
-    map.removeLayer(street);
-    satellite.addTo(map);
+    satelliteErrorCount=0;
+    if(map.hasLayer(activeStreet)) map.removeLayer(activeStreet);
+    if(!map.hasLayer(satellite)) satellite.addTo(map);
     document.getElementById("satellite").textContent="🗺️ Peta Jalan";
+    setTimeout(()=>map.invalidateSize({pan:false}),100);
   }else{
-    map.removeLayer(satellite);
-    street.addTo(map);
+    if(map.hasLayer(satellite)) map.removeLayer(satellite);
+    if(!map.hasLayer(activeStreet)) activeStreet.addTo(map);
     document.getElementById("satellite").textContent="🛰️ Satelit";
+    setTimeout(()=>map.invalidateSize({pan:false}),100);
   }
-
-  setTimeout(()=>{
-    map.invalidateSize({pan:false});
-    map.eachLayer(l=>{
-      if(l instanceof L.TileLayer) l.redraw();
-    });
-  },120);
 };
 
 /* =========================
