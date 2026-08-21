@@ -15,19 +15,17 @@ body{font-family:Arial,sans-serif;overflow:hidden}
 
 #searchBox{
   position:absolute;z-index:1000;top:12px;left:58px;
-  width:min(650px,calc(100% - 85px));
+  width:min(420px,calc(100% - 85px));
 }
 #search{
   width:100%;box-sizing:border-box;padding:12px 14px;
   border:1px solid #ccc;border-radius:8px;
   font-size:15px;outline:none;background:#fff;
-  box-shadow:0 2px 8px rgba(0,0,0,.18);
 }
 #suggestions{
   display:none;background:#fff;border:1px solid #ddd;
   border-top:0;border-radius:0 0 8px 8px;
-  max-height:300px;overflow-y:auto;overflow-x:hidden;
-  box-shadow:0 3px 12px rgba(0,0,0,.18);
+  max-height:280px;overflow:auto;box-shadow:0 3px 12px rgba(0,0,0,.18);
 }
 .suggestion{
   padding:10px 12px;cursor:pointer;border-bottom:1px solid #eee;
@@ -36,8 +34,8 @@ body{font-family:Arial,sans-serif;overflow:hidden}
 .suggestion small{display:block;color:#666;margin-top:3px}
 
 #controls{
-  display:flex;gap:7px;flex-wrap:wrap;
-  max-width:100%;margin-top:8px;
+  position:absolute;z-index:1000;top:68px;left:58px;
+  display:flex;gap:7px;flex-wrap:wrap;max-width:min(600px,calc(100% - 70px));
 }
 button,select{
   border:0;border-radius:7px;background:#fff;padding:9px 11px;
@@ -71,21 +69,7 @@ button:hover{background:#f3f3f3}
 .legend i{width:14px;height:14px;float:left;margin-right:7px;margin-top:2px;border-radius:50%}
 
 @media(max-width:600px){
-  #searchBox{
-    left:58px;
-    width:calc(100% - 72px);
-  }
-  #controls{
-    gap:6px;
-  }
-  #controls button,#controls select{
-    font-size:13px;
-    padding:8px 9px;
-  }
-  #kabupaten{
-    max-width:100%;
-    flex:1 1 100%;
-  }
+  #controls{top:66px;left:58px}
   #nearbyPanel{top:auto;bottom:50px}
 }
 </style>
@@ -97,18 +81,16 @@ button:hover{background:#f3f3f3}
 <div id="searchBox">
   <input id="search" autocomplete="off" placeholder="Cari nama warung / alamat / kabupaten...">
   <div id="suggestions"></div>
+</div>
 
-  <!-- Kontrol sengaja diletakkan setelah daftar saran,
-       sehingga daftar saran tidak pernah menutupi tombol. -->
-  <div id="controls">
-    <select id="kabupaten">
-      <option value="">🏘️ Semua Kabupaten / Kota</option>
-    </select>
-    <button id="locate">📍 Lokasi Saya</button>
-    <button id="nearby">🔎 Warung Terdekat</button>
-    <button id="refresh">↻ Muat ulang</button>
-    <button id="satellite">🛰️ Satelit</button>
-  </div>
+<div id="controls">
+  <select id="kabupaten">
+    <option value="">🏘️ Semua Kabupaten / Kota</option>
+  </select>
+  <button id="locate">📍 Lokasi Saya</button>
+  <button id="nearby">🔎 Warung Terdekat</button>
+  <button id="refresh">↻ Muat ulang</button>
+  <button id="satellite">🛰️ Satelit</button>
 </div>
 
 <div id="status">Memuat data...</div>
@@ -130,12 +112,11 @@ const map = L.map("map", { preferCanvas:true }).setView([-4.8,105.4], 9);
 const street = L.tileLayer(
   "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
   {
-    maxZoom:19,
-    maxNativeZoom:19,
+    maxZoom:20,
+    maxNativeZoom:20,
     updateWhenIdle:true,
     keepBuffer:3,
-    attribution:
-      '&copy; OpenStreetMap contributors &copy; CARTO'
+    attribution:"&copy; OpenStreetMap contributors &copy; CARTO"
   }
 ).addTo(map);
 
@@ -150,7 +131,7 @@ const satellite = L.tileLayer(
   }
 );
 
-// Peta jalan OpenStreetMap: lebih jelas untuk jalan, nama tempat, dan batas wilayah.
+// Jika tile jalan gagal dimuat, coba lagi otomatis saat peta berubah.
 street.on("tileerror",()=>{
   setTimeout(()=>street.redraw(),500);
 });
@@ -169,17 +150,6 @@ const layer = L.markerClusterGroup({
 });
 map.addLayer(layer);
 
-// Membantu peta menggambar ulang setelah zoom
-map.on("zoomend", () => {
-  setTimeout(() => {
-    map.invalidateSize({pan:false});
-  }, 100);
-});
-
-window.addEventListener("resize", () => {
-  map.invalidateSize({pan:false});
-});
-  
 // Membantu tile menggambar ulang dengan benar setelah zoom/resize.
 map.on("zoomend",()=>map.invalidateSize({pan:false}));
 window.addEventListener("resize",()=>map.invalidateSize({pan:false}));
@@ -195,7 +165,7 @@ let lastRenderedFilter = "";
 const status = document.getElementById("status");
 const search = document.getElementById("search");
 const suggestions = document.getElementById("suggestions");
-const kabupatenSelect = document.getElementById("kabupaten");
+const KabupatenSelect = document.getElementById("kabupaten");
 
 function esc(v){
   return String(v ?? "").replace(/[&<>"']/g, c => ({
@@ -233,13 +203,6 @@ function parseCSV(text){
   return rows.slice(1).map(r=>{
     const o={};
     headers.forEach((h,i)=>o[h]=(r[i] ?? "").trim());
-
-    // Samakan beberapa variasi nama kolom Google Sheets menjadi nama internal.
-    const kab = o["kabupaten / kota"] || o["kabupaten/kota"] || o["kabupaten"] || o["kota"] || "";
-    if(kab) o.kabupaten = kab;
-    const kec = o["kecamatan"] || "";
-    if(kec) o.kecamatan = kec;
-
     return o;
   });
 }
@@ -276,36 +239,47 @@ function colorFor(k){
   return colors[key];
 }
 
-function makeIcon(color){
+function makeIcon(color,highlight=false){
+  const size=highlight ? 30 : 22;
+  const border=highlight ? 4 : 2;
+
   return L.divIcon({
-    className:"",
+    className:highlight ? "search-highlight" : "",
     html:`<div style="
-      width:22px;height:22px;border-radius:50% 50% 50% 0;
-      background:${color};transform:rotate(-45deg);
-      border:2px solid white;box-shadow:0 2px 5px rgba(0,0,0,.35);
+      width:${size}px;height:${size}px;border-radius:50% 50% 50% 0;
+      background:${highlight ? "#ff9800" : color};transform:rotate(-45deg);
+      border:${border}px solid white;box-shadow:0 2px 7px rgba(0,0,0,.45);
       position:relative">
-      <div style="width:7px;height:7px;border-radius:50%;background:white;
-      position:absolute;left:7px;top:7px"></div>
+      <div style="width:${highlight ? 9 : 7}px;height:${highlight ? 9 : 7}px;
+      border-radius:50%;background:white;
+      position:absolute;left:${highlight ? 9 : 7}px;top:${highlight ? 9 : 7}px"></div>
     </div>`,
-    iconSize:[26,26], iconAnchor:[13,26], popupAnchor:[0,-24]
+    iconSize:highlight ? [38,38] : [26,26],
+    iconAnchor:highlight ? [19,38] : [13,26],
+    popupAnchor:[0,highlight ? -34 : -24]
   });
 }
 
-function popupHtml(r){
+function googleMapsUrl(r){
   const {lat,lng}=getCoord(r);
+  if(!Number.isFinite(lat)||!Number.isFinite(lng)) return "#";
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lat+","+lng)}`;
+}
+
+function popupHtml(r){
   const name=esc(r.name || "Warung");
-  const kec=esc(r.kabupaten || "Tidak diisi");
+  const kab=esc(r.kabupaten || "Tidak diisi");
   const desc=esc(r.description || "");
-  const maps=`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  const maps=googleMapsUrl(r);
 
   return `
     <div style="min-width:220px;max-width:300px">
       <b style="font-size:16px">${name}</b>
-      <div style="margin:6px 0"><b>Kabupaten:</b> ${kec}</div>
-      ${desc ? `<div style="margin-bottom:8px">${desc}</div>` : ""}
+      <div style="margin:6px 0"><b>Kabupaten:</b> ${kab}</div>
+      ${desc ? `<div style="margin-bottom:8px;line-height:1.35">${desc}</div>` : ""}
       <a href="${maps}" target="_blank" rel="noopener"
          style="display:inline-block;background:#1a73e8;color:white;
-         padding:8px 11px;border-radius:6px;text-decoration:none">
+         padding:8px 11px;border-radius:6px;text-decoration:none;font-weight:bold">
          🗺️ Lihat di Google Maps
       </a>
     </div>`;
@@ -320,10 +294,19 @@ function render(list, fit=false){
     const {lat,lng}=getCoord(r);
     if(!Number.isFinite(lat)||!Number.isFinite(lng)) return;
 
-    const kec=r.kabupaten || "";
-    const marker=L.marker([lat,lng],{icon:makeIcon(colorFor(kec))});
+    const kab=r.kabupaten || "";
+    const isHighlight=activeSearchRow===r;
+    const marker=L.marker([lat,lng],{
+      icon:makeIcon(colorFor(kab),isHighlight)
+    });
+
     marker.bindPopup(popupHtml(r));
     marker._row=r;
+
+    if(isHighlight){
+      marker.setZIndexOffset(10000);
+    }
+
     markers.push(marker);
   });
 
@@ -333,7 +316,9 @@ function render(list, fit=false){
 
   if(fit && markers.length){
     const group=L.featureGroup(markers);
-    map.fitBounds(group.getBounds().pad(0.12));
+    if(group.getBounds().isValid()){
+      map.fitBounds(group.getBounds().pad(0.12));
+    }
   }
 }
 
@@ -351,19 +336,32 @@ function populateKabupaten(){
   });
 }
 
-function applyFilter(fit=false){
+function getFilteredRowsByKabupaten(){
   const selected=normalize(kabupatenSelect.value);
-  const q=normalize(search.value);
-
-  const filtered=allRows.filter(r=>{
-    const kecOk=!selected || normalize(r.kabupaten)===selected;
-    const text=[r.name,r.description,r.kabupaten].map(normalize).join(" ");
-    const searchOk=!q || text.includes(q);
-    return kecOk && searchOk;
+  return allRows.filter(r=>{
+    return !selected || normalize(r.kabupaten)===selected;
   });
+}
 
-  render(filtered,fit);
-  lastRenderedFilter=selected+"|"+q;
+function applyFilter(fit=false){
+  activeSearchRow=null;
+  const rows=getFilteredRowsByKabupaten();
+  render(rows,fit);
+  if(kabupatenSelect.value){
+    status.textContent=`${rows.length.toLocaleString("id-ID")} warung di ${kabupatenSelect.value}`;
+  }
+}
+
+function searchableText(r){
+  return [r.name,r.description,r.kabupaten].map(normalize).join(" ");
+}
+
+function findSearchMatches(q){
+  const selected=normalize(kabupatenSelect.value);
+  return allRows.filter(r=>{
+    const kabOk=!selected || normalize(r.kabupaten)===selected;
+    return kabOk && searchableText(r).includes(q);
+  });
 }
 
 function showSuggestions(){
@@ -371,57 +369,87 @@ function showSuggestions(){
   suggestions.innerHTML="";
   if(!q){ suggestions.style.display="none"; return; }
 
-  const matches=allRows.filter(r=>{
-    const text=[r.name,r.description,r.kabupaten].map(normalize).join(" ");
-    return text.includes(q);
-  }).slice(0,10);
-
+  const matches=findSearchMatches(q).slice(0,12);
   if(!matches.length){ suggestions.style.display="none"; return; }
 
-  matches.forEach((r,i)=>{
+  matches.forEach(r=>{
     const d=document.createElement("div");
     d.className="suggestion";
     d.innerHTML=`<b>${esc(r.name || "Warung")}</b>
       <small>🏘️ ${esc(r.kabupaten || "Kabupaten belum diisi")}</small>`;
-    d.onclick=()=>selectSuggestion(r);
+    d.onclick=()=>selectSearchResult(r);
     suggestions.appendChild(d);
   });
   suggestions.style.display="block";
 }
 
-function selectSuggestion(r){
-  search.value=r.name || "";
-  suggestions.style.display="none";
+/*
+  PENTING: pencarian hanya menyorot hasil.
+  Marker warung lain tetap ditampilkan.
+*/
+function focusSearchResult(r){
+  activeSearchRow=r;
 
-  if(r.kabupaten) kabupatenSelect.value=r.kabupaten;
-  applyFilter(false);
+  // Render semua warung yang sedang berlaku, bukan hanya hasil pencarian.
+  render(getFilteredRowsByKabupaten(),false);
 
   const {lat,lng}=getCoord(r);
-  if(Number.isFinite(lat)&&Number.isFinite(lng)){
-    map.setView([lat,lng],17);
-    setTimeout(()=>{
-      const marker=visibleRows.find(x=>x===r);
-      if(marker){
-        // Cari marker berdasarkan koordinat
-        layer.eachLayer(m=>{
-          if(m._row===r) m.openPopup();
-        });
-      }
-    },250);
+  if(!Number.isFinite(lat)||!Number.isFinite(lng)) return;
+
+  map.setView([lat,lng],17,{animate:true});
+
+  setTimeout(()=>{
+    layer.eachLayer(m=>{
+      if(m._row===r) m.openPopup();
+    });
+  },450);
+}
+
+function selectSearchResult(r){
+  search.value=r.name || "";
+  suggestions.style.display="none";
+  focusSearchResult(r);
+  status.textContent="Menampilkan semua warung · hasil pencarian disorot";
+}
+
+function searchNow(){
+  const q=normalize(search.value);
+  if(!q){
+    applyFilter(false);
+    return;
   }
+
+  const matches=findSearchMatches(q);
+  if(!matches.length){
+    status.textContent="Warung tidak ditemukan.";
+    return;
+  }
+
+  focusSearchResult(matches[0]);
+  status.textContent=`Menampilkan semua warung · ditemukan ${matches.length} hasil`;
 }
 
 search.addEventListener("input",()=>{
   showSuggestions();
-  if(!search.value.trim()) applyFilter(false);
+  if(!search.value.trim()){
+    activeSearchRow=null;
+    applyFilter(false);
+  }else{
+    const matches=findSearchMatches(normalize(search.value));
+    status.textContent=matches.length
+      ? `Ditemukan ${matches.length} warung · pilih saran atau tekan Enter`
+      : "Warung tidak ditemukan.";
+  }
 });
 
 search.addEventListener("keydown",e=>{
   if(e.key==="Enter"){
+    e.preventDefault();
     const first=suggestions.querySelector(".suggestion");
     if(first) first.click();
-    else applyFilter(true);
+    else searchNow();
   }
+  if(e.key==="Escape") suggestions.style.display="none";
 });
 
 document.addEventListener("click",e=>{
@@ -429,7 +457,12 @@ document.addEventListener("click",e=>{
     suggestions.style.display="none";
 });
 
-kabupatenSelect.addEventListener("change",()=>applyFilter(true));
+kabupatenSelect.addEventListener("change",()=>{
+  search.value="";
+  suggestions.style.display="none";
+  activeSearchRow=null;
+  applyFilter(true);
+});
 
 document.getElementById("refresh").onclick=loadData;
 
@@ -533,7 +566,9 @@ async function loadData(){
     });
 
     populateKabupaten();
-    applyFilter(false);
+    updateLegend();
+    activeSearchRow=null;
+    render(allRows,false);
 
     status.textContent=`Data siap · ${allRows.length.toLocaleString("id-ID")} warung`;
   }catch(err){
@@ -561,12 +596,6 @@ function updateLegend(){
   el.innerHTML="<b>🏘️ Kabupaten</b><br>"+
     vals.map(k=>`<div><i style="background:${colorFor(k)}"></i>${esc(k)}</div>`).join("");
 }
-
-const oldPopulate=populateKabupaten;
-populateKabupaten=function(){
-  oldPopulate();
-  updateLegend();
-};
 
 loadData();
 </script>
