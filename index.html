@@ -169,6 +169,17 @@ const layer = L.markerClusterGroup({
 });
 map.addLayer(layer);
 
+// Membantu peta menggambar ulang setelah zoom
+map.on("zoomend", () => {
+  setTimeout(() => {
+    map.invalidateSize({pan:false});
+  }, 100);
+});
+
+window.addEventListener("resize", () => {
+  map.invalidateSize({pan:false});
+});
+  
 // Membantu tile menggambar ulang dengan benar setelah zoom/resize.
 map.on("zoomend",()=>map.invalidateSize({pan:false}));
 window.addEventListener("resize",()=>map.invalidateSize({pan:false}));
