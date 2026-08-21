@@ -15,17 +15,19 @@ body{font-family:Arial,sans-serif;overflow:hidden}
 
 #searchBox{
   position:absolute;z-index:1000;top:12px;left:58px;
-  width:min(420px,calc(100% - 85px));
+  width:min(650px,calc(100% - 85px));
 }
 #search{
   width:100%;box-sizing:border-box;padding:12px 14px;
   border:1px solid #ccc;border-radius:8px;
   font-size:15px;outline:none;background:#fff;
+  box-shadow:0 2px 8px rgba(0,0,0,.18);
 }
 #suggestions{
   display:none;background:#fff;border:1px solid #ddd;
   border-top:0;border-radius:0 0 8px 8px;
-  max-height:280px;overflow:auto;box-shadow:0 3px 12px rgba(0,0,0,.18);
+  max-height:300px;overflow-y:auto;overflow-x:hidden;
+  box-shadow:0 3px 12px rgba(0,0,0,.18);
 }
 .suggestion{
   padding:10px 12px;cursor:pointer;border-bottom:1px solid #eee;
@@ -34,8 +36,8 @@ body{font-family:Arial,sans-serif;overflow:hidden}
 .suggestion small{display:block;color:#666;margin-top:3px}
 
 #controls{
-  position:absolute;z-index:1000;top:68px;left:58px;
-  display:flex;gap:7px;flex-wrap:wrap;max-width:min(600px,calc(100% - 70px));
+  display:flex;gap:7px;flex-wrap:wrap;
+  max-width:100%;margin-top:8px;
 }
 button,select{
   border:0;border-radius:7px;background:#fff;padding:9px 11px;
@@ -69,7 +71,21 @@ button:hover{background:#f3f3f3}
 .legend i{width:14px;height:14px;float:left;margin-right:7px;margin-top:2px;border-radius:50%}
 
 @media(max-width:600px){
-  #controls{top:66px;left:58px}
+  #searchBox{
+    left:58px;
+    width:calc(100% - 72px);
+  }
+  #controls{
+    gap:6px;
+  }
+  #controls button,#controls select{
+    font-size:13px;
+    padding:8px 9px;
+  }
+  #kabupaten{
+    max-width:100%;
+    flex:1 1 100%;
+  }
   #nearbyPanel{top:auto;bottom:50px}
 }
 </style>
@@ -81,16 +97,18 @@ button:hover{background:#f3f3f3}
 <div id="searchBox">
   <input id="search" autocomplete="off" placeholder="Cari nama warung / alamat / kabupaten...">
   <div id="suggestions"></div>
-</div>
 
-<div id="controls">
-  <select id="kabupaten">
-    <option value="">🏘️ Semua Kabupaten / Kota</option>
-  </select>
-  <button id="locate">📍 Lokasi Saya</button>
-  <button id="nearby">🔎 Warung Terdekat</button>
-  <button id="refresh">↻ Muat ulang</button>
-  <button id="satellite">🛰️ Satelit</button>
+  <!-- Kontrol sengaja diletakkan setelah daftar saran,
+       sehingga daftar saran tidak pernah menutupi tombol. -->
+  <div id="controls">
+    <select id="kabupaten">
+      <option value="">🏘️ Semua Kabupaten / Kota</option>
+    </select>
+    <button id="locate">📍 Lokasi Saya</button>
+    <button id="nearby">🔎 Warung Terdekat</button>
+    <button id="refresh">↻ Muat ulang</button>
+    <button id="satellite">🛰️ Satelit</button>
+  </div>
 </div>
 
 <div id="status">Memuat data...</div>
@@ -266,7 +284,7 @@ function popupHtml(r){
   const name=esc(r.name || "Warung");
   const kec=esc(r.kabupaten || "Tidak diisi");
   const desc=esc(r.description || "");
-  const maps=`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+  const maps=`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
 
   return `
     <div style="min-width:220px;max-width:300px">
@@ -276,7 +294,7 @@ function popupHtml(r){
       <a href="${maps}" target="_blank" rel="noopener"
          style="display:inline-block;background:#1a73e8;color:white;
          padding:8px 11px;border-radius:6px;text-decoration:none">
-         🚗 Navigasi Google Maps
+         🗺️ Lihat di Google Maps
       </a>
     </div>`;
 }
