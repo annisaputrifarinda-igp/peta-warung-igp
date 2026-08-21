@@ -308,16 +308,45 @@ const map = L.map("map", {
   zoomControl:true
 }).setView([-4.8,105.4],9);
 
+/*
+  BASEMAP STABIL:
+  OSM langsung kadang terkena rate-limit/timeout ketika zoom tinggi,
+  sehingga muncul "Map data not yet available".
+  Peta jalan utama memakai CARTO, dengan OSM dan Esri sebagai fallback.
+*/
 const street = L.tileLayer(
+  "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+  {
+    subdomains:"abcd",
+    maxZoom:20,
+    maxNativeZoom:20,
+    updateWhenIdle:true,
+    keepBuffer:2,
+    attribution:"&copy; OpenStreetMap contributors &copy; CARTO"
+  }
+).addTo(map);
+
+const streetOSM = L.tileLayer(
   "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
   {
     maxZoom:19,
     maxNativeZoom:19,
     updateWhenIdle:true,
-    keepBuffer:4,
+    keepBuffer:2,
     attribution:"&copy; OpenStreetMap contributors"
   }
-).addTo(map);
+);
+
+const streetEsri = L.tileLayer(
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+  {
+    maxZoom:19,
+    maxNativeZoom:19,
+    updateWhenIdle:true,
+    keepBuffer:2,
+    attribution:"Tiles &copy; Esri"
+  }
+);
 
 const satellite = L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -325,19 +354,80 @@ const satellite = L.tileLayer(
     maxZoom:19,
     maxNativeZoom:19,
     updateWhenIdle:true,
-    keepBuffer:3,
+    keepBuffer:2,
     attribution:"Tiles &copy; Esri"
   }
 );
 
-/* Jika tile gagal, coba gambar ulang */
-street.on("tileerror",()=>{
-  setTimeout(()=>street.redraw(),700);
-});
+/*
+  Fallback otomatis:
+  - pertama CARTO
+  - jika banyak tile gagal, coba Esri Street
+  - jika masih gagal, coba OSM
+  Tidak mengubah marker, cluster, pencarian, atau filter.
+*/
+let streetFallbackLevel = 0;
+let streetErrorCount = 0;
+let streetFallbackTimer = null;
+
+function useStreetFallback(){
+  if(satelliteOn) return;
+
+  streetErrorCount = 0;
+
+  if(streetFallbackLevel === 0){
+    streetFallbackLevel = 1;
+    if(map.hasLayer(street)) map.removeLayer(street);
+    streetEsri.addTo(map);
+    streetEsri.bringToBack();
+    status.textContent = "Menggunakan peta jalan cadangan...";
+  }else if(streetFallbackLevel === 1){
+    streetFallbackLevel = 2;
+    if(map.hasLayer(streetEsri)) map.removeLayer(streetEsri);
+    streetOSM.addTo(map);
+    streetOSM.bringToBack();
+    status.textContent = "Menggunakan peta jalan alternatif...";
+  }
+}
+
+function watchTileErrors(layerObj){
+  layerObj.on("tileerror",()=>{
+    if(satelliteOn) return;
+
+    streetErrorCount++;
+
+    if(streetErrorCount >= 6){
+      clearTimeout(streetFallbackTimer);
+      streetFallbackTimer = setTimeout(useStreetFallback,500);
+    }
+  });
+}
+
+watchTileErrors(street);
+watchTileErrors(streetEsri);
+watchTileErrors(streetOSM);
 
 satellite.on("tileerror",()=>{
-  setTimeout(()=>satellite.redraw(),700);
+  /* Satelit tidak diganti otomatis agar tombol tetap konsisten. */
 });
+
+/* Saat kembali ke peta jalan, mulai dari layer yang paling stabil. */
+function showStreet(){
+  if(map.hasLayer(satellite)) map.removeLayer(satellite);
+
+  if(streetFallbackLevel === 0){
+    street.addTo(map);
+    street.bringToBack();
+  }else if(streetFallbackLevel === 1){
+    streetEsri.addTo(map);
+    streetEsri.bringToBack();
+  }else{
+    streetOSM.addTo(map);
+    streetOSM.bringToBack();
+  }
+
+  setTimeout(()=>map.invalidateSize({pan:false}),100);
+}
 
 /* =========================
    CLUSTER
@@ -858,14 +948,19 @@ document.getElementById("satellite").onclick=()=>{
   satelliteOn=!satelliteOn;
 
   if(satelliteOn){
-    map.removeLayer(street);
+    if(map.hasLayer(street)) map.removeLayer(street);
+    if(map.hasLayer(streetEsri)) map.removeLayer(streetEsri);
+    if(map.hasLayer(streetOSM)) map.removeLayer(streetOSM);
+
     satellite.addTo(map);
+    satellite.bringToBack();
     document.getElementById("satellite").textContent="🗺️ Peta Jalan";
   }else{
-    map.removeLayer(satellite);
-    street.addTo(map);
+    showStreet();
     document.getElementById("satellite").textContent="🛰️ Satelit";
   }
+
+  setTimeout(()=>map.invalidateSize({pan:false}),100);
 };
 
 /* =========================
