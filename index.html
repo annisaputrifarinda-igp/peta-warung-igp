@@ -2,1181 +2,1043 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Peta Warung IGP - Peta Jalan Stabil</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Peta Warung IGP</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 
 <style>
+*{box-sizing:border-box}
 html,body,#map{height:100%;margin:0}
-body{font-family:Arial,sans-serif;overflow:hidden}
+body{font-family:Arial,sans-serif;overflow:hidden;background:#e9eef2}
+#map{position:fixed;inset:0;z-index:1}
 
-/* =========================
-   PANEL PENCARIAN
-   Saran dan tombol berada
-   dalam satu alur vertikal.
-   Tombol TIDAK akan menutupi saran.
-   ========================= */
-#topPanel{
-  position:absolute;
-  z-index:2000;
-  top:14px;
-  left:58px;
-  width:min(650px,calc(100vw - 85px));
-}
-
-#searchBox{width:100%}
-
-#search{
-  display:block;
-  width:100%;
-  box-sizing:border-box;
-  padding:12px 14px;
-  border:1px solid #ccc;
-  border-radius:8px;
-  font-size:15px;
-  outline:none;
-  background:#fff;
-  box-shadow:0 2px 8px rgba(0,0,0,.18);
-}
-
-#search:focus{
-  border-color:#4285f4;
-  box-shadow:0 2px 10px rgba(66,133,244,.25);
-}
-
-/* Saran menjadi bagian dari panel, bukan absolute.
-   Karena itu tombol otomatis turun ketika saran muncul. */
-#suggestions{
-  display:none;
-  width:100%;
-  max-height:300px;
-  overflow-y:auto;
-  overflow-x:hidden;
-  box-sizing:border-box;
-  background:#fff;
-  border:1px solid #ddd;
-  border-top:0;
-  border-radius:0 0 8px 8px;
-  box-shadow:0 3px 12px rgba(0,0,0,.18);
-}
-
-.suggestion{
-  padding:10px 12px;
-  cursor:pointer;
-  border-bottom:1px solid #eee;
-}
-
-.suggestion:last-child{border-bottom:0}
-
-.suggestion:hover,
-.suggestion.active{
-  background:#f0f6ff;
-}
-
-.suggestion b{
-  display:block;
-  font-size:15px;
-}
-
-.suggestion small{
-  display:block;
-  color:#666;
-  margin-top:3px;
-}
-
-/* Bilah fitur selalu berada DI BAWAH saran */
 #controls{
-  display:flex;
-  gap:7px;
-  flex-wrap:wrap;
-  width:100%;
-  margin-top:9px;
+  position:fixed;z-index:2000;top:14px;left:50px;
+  width:min(720px,calc(100vw - 100px));
 }
+.search-row{position:relative}
+#search{
+  width:100%;height:44px;border:0;border-radius:9px;
+  padding:0 14px;font-size:16px;box-shadow:0 2px 10px rgba(0,0,0,.18);
+  outline:none;background:#fff;
+}
+#suggestions{
+  position:absolute;left:0;right:0;top:48px;display:none;
+  max-height:min(320px,45vh);overflow:auto;background:#fff;
+  border-radius:0 0 10px 10px;box-shadow:0 5px 16px rgba(0,0,0,.22);
+}
+.suggestion{
+  padding:10px 14px;border-bottom:1px solid #eee;cursor:pointer;background:#fff
+}
+.suggestion:hover{background:#f4f7fb}
+.suggestion .name{font-weight:700}
+.suggestion .meta{font-size:13px;color:#666;margin-top:3px}
 
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 button,select{
-  border:0;
-  border-radius:7px;
-  background:#fff;
-  padding:9px 11px;
-  box-shadow:0 2px 8px rgba(0,0,0,.20);
+  height:40px;border:0;border-radius:8px;background:#fff;
+  padding:0 12px;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.16);
   cursor:pointer;
-  font-size:14px;
 }
+select{min-width:220px}
+button:hover,select:hover{background:#f6f6f6}
 
-button:hover,select:hover{background:#f3f3f3}
-button:active{transform:translateY(1px)}
-
-#kabupaten{
-  max-width:225px;
-}
-
-/* Status */
 #status{
-  position:absolute;
-  z-index:1000;
-  left:58px;
-  bottom:14px;
-  padding:8px 11px;
-  border-radius:7px;
-  background:rgba(255,255,255,.95);
-  box-shadow:0 2px 8px rgba(0,0,0,.20);
-  font-size:13px;
+  position:fixed;left:50px;bottom:14px;z-index:2000;
+  background:rgba(255,255,255,.94);padding:8px 12px;border-radius:8px;
+  box-shadow:0 2px 8px rgba(0,0,0,.15);font-size:13px;
+}
+#legend{
+  position:fixed;right:10px;bottom:10px;z-index:2000;
+  background:rgba(255,255,255,.95);padding:10px 12px;border-radius:8px;
+  box-shadow:0 2px 8px rgba(0,0,0,.16);font-size:13px;
+}
+.legend-title{font-weight:700;margin-bottom:5px}
+.legend-row{display:flex;align-items:center;gap:7px;margin:4px 0}
+.dot{width:13px;height:13px;border-radius:50%;display:inline-block}
+
+.leaflet-popup-content{margin:14px;min-width:240px}
+.popup-title{font-size:16px;font-weight:700;margin-bottom:7px}
+.popup-kab{margin-bottom:8px}
+.popup-desc{white-space:pre-line;font-size:13px;line-height:1.35}
+.maps-btn{
+  display:inline-block;margin-top:10px;padding:8px 12px;border-radius:6px;
+  background:#1a73e8;color:#fff;text-decoration:none;font-weight:700
 }
 
-/* Panel warung terdekat */
-#nearbyPanel{
-  position:absolute;
-  z-index:2000;
-  right:12px;
-  top:12px;
-  width:min(320px,calc(100% - 24px));
-  max-height:55vh;
-  overflow:auto;
-  display:none;
-  background:#fff;
-  border-radius:9px;
-  box-shadow:0 3px 15px rgba(0,0,0,.25);
+.loading-overlay{
+  position:fixed;inset:0;z-index:1900;display:none;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.45);backdrop-filter:blur(1px)
 }
+.loading-card{background:#fff;padding:16px 20px;border-radius:10px;box-shadow:0 4px 18px rgba(0,0,0,.18)}
 
-#nearbyPanel h3{
-  margin:0;
-  padding:12px;
-  border-bottom:1px solid #ddd;
-}
-
-.nearbyItem{
-  padding:10px 12px;
-  border-bottom:1px solid #eee;
-  cursor:pointer;
-}
-
-.nearbyItem:hover{background:#f5f5f5}
-
-.nearbyItem small{
-  display:block;
-  color:#666;
-  margin-top:3px;
-}
-
-.closeNearby{
-  float:right;
-  background:none;
-  box-shadow:none;
-  padding:0;
-  font-size:20px;
-}
-
-/* Legenda */
-.legend{
-  line-height:18px;
-  color:#333;
-  background:#fff;
-  padding:8px 10px;
-  border-radius:7px;
-  box-shadow:0 2px 8px rgba(0,0,0,.2);
-  max-height:220px;
-  overflow:auto;
-  max-width:220px;
-}
-
-.legend i{
-  width:14px;
-  height:14px;
-  float:left;
-  margin-right:7px;
-  margin-top:2px;
-  border-radius:50%;
-}
-
-/* Marker hasil pencarian */
-.search-highlight{
-  width:34px;
-  height:34px;
-  border-radius:50%;
-  background:#ff9800;
-  border:4px solid #fff;
-  box-shadow:0 0 0 5px rgba(255,152,0,.30),0 3px 10px rgba(0,0,0,.35);
-  animation:searchPulse 1.2s infinite;
-}
-
-@keyframes searchPulse{
-  0%,100%{transform:scale(1)}
-  50%{transform:scale(1.12)}
-}
-
-@media(max-width:700px){
-  #topPanel{
-    left:52px;
-    width:calc(100vw - 66px);
-  }
-
-  #controls{
-    gap:6px;
-  }
-
-  #controls button,
-  #controls select{
-    font-size:13px;
-    padding:8px 9px;
-  }
-
-  #kabupaten{
-    max-width:none;
-    flex:1 1 100%;
-  }
-
-  #nearbyPanel{
-    top:auto;
-    bottom:50px;
-  }
-}
-
-@media(max-width:430px){
-  #topPanel{
-    top:10px;
-    left:48px;
-    width:calc(100vw - 58px);
-  }
-
-  #search{
-    font-size:14px;
-    padding:10px 11px;
-  }
-
-  #controls button{
-    flex:1 1 auto;
-  }
+@media(max-width:650px){
+  #controls{left:48px;right:10px;width:auto;top:10px}
+  select{min-width:0;flex:1}
+  .toolbar button{flex:0 0 auto}
+  #status{left:10px;bottom:10px}
 }
 </style>
 </head>
-
 <body>
 <div id="map"></div>
 
-<!-- Semua kontrol berada dalam satu panel -->
-<div id="topPanel">
-  <div id="searchBox">
-    <input
-      id="search"
-      autocomplete="off"
-      placeholder="Cari nama warung / alamat / kabupaten..."
-      aria-label="Cari warung"
-    >
+<div id="controls">
+  <div class="search-row">
+    <input id="search" autocomplete="off" placeholder="Cari nama warung / alamat / kabupaten...">
     <div id="suggestions"></div>
   </div>
 
-  <div id="controls">
-    <select id="kabupaten" aria-label="Filter Kabupaten atau Kota">
-      <option value="">🏘️ Semua Kabupaten / Kota</option>
+  <div class="toolbar">
+    <select id="kabupaten">
+      <option value="">🏠 Semua Kabupaten / Kota</option>
     </select>
-
-    <button id="locate" type="button">📍 Lokasi Saya</button>
-    <button id="nearby" type="button">🔎 Warung Terdekat</button>
-    <button id="refresh" type="button">↻ Muat ulang</button>
-    <button id="satellite" type="button">🛰️ Satelit</button>
+    <button id="locate">📍 Lokasi Saya</button>
+    <button id="nearby">🔎 Warung Terdekat</button>
+    <button id="refresh">↻ Muat ulang</button>
+    <button id="satellite">🛰️ Satelit</button>
   </div>
 </div>
 
 <div id="status">Memuat data...</div>
 
-<div id="nearbyPanel">
-  <h3>
-    🔎 Warung Terdekat
-    <button class="closeNearby" onclick="closeNearby()" aria-label="Tutup">×</button>
-  </h3>
-  <div id="nearbyList"></div>
+<div id="legend">
+  <div class="legend-title">🏠 Kabupaten</div>
+  <div class="legend-row"><span class="dot" style="background:#d32f2f"></span>Lampung Tengah</div>
+  <div class="legend-row"><span class="dot" style="background:#c9a227"></span>Lampung Timur</div>
+  <div class="legend-row"><span class="dot" style="background:#25a85a"></span>Lampung Utara</div>
+  <div class="legend-row"><span class="dot" style="background:#16a085"></span>Tulang Bawang</div>
+</div>
+
+<div class="loading-overlay" id="loading">
+  <div class="loading-card">Memuat data warung...</div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
 <script>
-/* =========================
-   DATA GOOGLE SHEETS
-   ========================= */
-const CSV_URL =
-"https://docs.google.com/spreadsheets/d/e/2PACX-1vQP1l3fVYi1dWu0g2UkLdpwcqosl7SUMGqDhibVGx6caqQwHKWWEx-ldWfLxrewHWlSiIm46Bv2uHIb/pub?output=csv";
+/*
+=========================================================
+ PETA WARUNG IGP - VERSI FINAL
+=========================================================
 
-/* =========================
-   PETA
-   ========================= */
-const map = L.map("map", {
-  preferCanvas:true,
-  zoomControl:true
-}).setView([-4.8,105.4],9);
+ FITUR:
+ - Pencarian nama/alamat/kabupaten
+ - Autocomplete/saran warung
+ - Kabupaten/Kota filter
+ - Lokasi Saya
+ - Warung Terdekat
+ - Marker clustering
+ - Satelit / Peta Jalan
+ - "Lihat di Google Maps" (bukan langsung navigasi)
+ - Semua marker warung tetap muncul ketika mencari
+ - Popup hasil pencarian otomatis dipusatkan
+ - Kontrol pencarian tidak menutupi popup
+ - Zoom dibatasi agar tidak meminta tile di luar level yang tersedia
+ - Basemap jalan memakai OpenStreetMap Standard
 
-/* =========================
-   BASEMAP STABIL
-   =========================
-   Esri World Street Map dijadikan peta jalan utama karena pada
-   perangkat/browser yang dipakai sebelumnya tile CARTO sering gagal
-   dan menghasilkan "Map data not yet available".
-
-   Urutan cadangan:
-   1. Esri World Street Map
-   2. OpenStreetMap
-   3. CARTO Light
+ PERHATIAN:
+ Isi CSV_URL dengan URL CSV Google Sheets Anda yang dipakai
+ pada versi sebelumnya.
+=========================================================
 */
-const streetEsri = L.tileLayer(
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+
+// ======================================================
+// 1. URL DATA GOOGLE SHEETS
+// ======================================================
+// GANTI ISI DI BAWAH dengan URL CSV Google Sheets Anda.
+// Contoh:
+// const CSV_URL = "https://docs.google.com/spreadsheets/d/e/...../pub?output=csv";
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQP1l3fVYi1dWu0g2UkLdpwcqosl7SUMGqDhibVGx6caqQwHKWWEx-ldWfLxrewHWlSiIm46Bv2uHIb/pub?output=csv";
+
+
+// ======================================================
+// 2. PETA
+// ======================================================
+// PENTING: maxZoom peta = 19.
+// Ini mencegah masalah "Map data not yet available"
+// ketika pengguna melakukan zoom terlalu jauh.
+const map = L.map("map", {
+  zoomControl: true,
+  maxZoom: 19,
+  minZoom: 3,
+  preferCanvas: true,
+  zoomAnimation: true,
+  fadeAnimation: true,
+  markerZoomAnimation: true
+}).setView([-4.85, 105.45], 9);
+
+
+// ======================================================
+// 3. BASEMAP JALAN
+// ======================================================
+// OpenStreetMap Standard dipakai sebagai peta jalan utama.
+// maxNativeZoom + maxZoom sama-sama 19 agar tidak meminta
+// tile kosong pada level zoom yang lebih tinggi.
+const roadLayer = L.tileLayer(
+  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
   {
-    maxZoom:19,
-    maxNativeZoom:19,
-    updateWhenIdle:true,
-    keepBuffer:3,
-    attribution:"Tiles &copy; Esri"
+    maxZoom: 19,
+    maxNativeZoom: 19,
+    updateWhenZooming: false,
+    updateWhenIdle: true,
+    keepBuffer: 4,
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
   }
 ).addTo(map);
 
-const streetOSM = L.tileLayer(
-  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-  {
-    maxZoom:19,
-    maxNativeZoom:19,
-    updateWhenIdle:true,
-    keepBuffer:3,
-    attribution:"&copy; OpenStreetMap contributors"
-  }
-);
 
-const street = L.tileLayer(
-  "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-  {
-    subdomains:"abcd",
-    maxZoom:20,
-    maxNativeZoom:20,
-    updateWhenIdle:true,
-    keepBuffer:3,
-    attribution:"&copy; OpenStreetMap contributors &copy; CARTO"
-  }
-);
-
-const satellite = L.tileLayer(
+// ======================================================
+// 4. BASEMAP SATELIT
+// ======================================================
+const satelliteLayer = L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
   {
-    maxZoom:19,
-    maxNativeZoom:19,
-    updateWhenIdle:true,
-    keepBuffer:3,
-    attribution:"Tiles &copy; Esri"
+    maxZoom: 19,
+    maxNativeZoom: 19,
+    updateWhenZooming: false,
+    updateWhenIdle: true,
+    keepBuffer: 4,
+    attribution: "Tiles &copy; Esri"
   }
 );
 
-let streetFallbackLevel = 0;
-let streetErrorCount = 0;
-let streetFallbackTimer = null;
+let currentBase = "road";
 
-function removeStreetLayers(){
-  [streetEsri,streetOSM,street].forEach(layerObj=>{
-    if(map.hasLayer(layerObj)) map.removeLayer(layerObj);
-  });
-}
 
-function useStreetFallback(){
-  if(satelliteOn) return;
-
-  streetErrorCount=0;
-  removeStreetLayers();
-
-  if(streetFallbackLevel===0){
-    streetFallbackLevel=1;
-    streetOSM.addTo(map);
-    streetOSM.bringToBack();
-    status.textContent="Peta jalan utama bermasalah, memakai OpenStreetMap...";
-  }else if(streetFallbackLevel===1){
-    streetFallbackLevel=2;
-    street.addTo(map);
-    street.bringToBack();
-    status.textContent="Memakai peta jalan cadangan CARTO...";
-  }
-}
-
-function watchTileErrors(layerObj){
-  layerObj.on("tileerror",()=>{
-    if(satelliteOn) return;
-    streetErrorCount++;
-
-    /* Jangan langsung pindah karena 1-2 tile gagal itu normal. */
-    if(streetErrorCount>=10){
-      clearTimeout(streetFallbackTimer);
-      streetFallbackTimer=setTimeout(useStreetFallback,800);
-    }
-  });
-}
-
-watchTileErrors(streetEsri);
-watchTileErrors(streetOSM);
-watchTileErrors(street);
-
-function showStreet(){
-  if(map.hasLayer(satellite)) map.removeLayer(satellite);
-  removeStreetLayers();
-
-  if(streetFallbackLevel===0){
-    streetEsri.addTo(map);
-    streetEsri.bringToBack();
-  }else if(streetFallbackLevel===1){
-    streetOSM.addTo(map);
-    streetOSM.bringToBack();
-  }else{
-    street.addTo(map);
-    street.bringToBack();
-  }
-
-  setTimeout(()=>map.invalidateSize({pan:false}),100);
-}
-
-/* =========================
-   CLUSTER
-   ========================= */
-const layer = L.markerClusterGroup({
-  chunkedLoading:true,
-  chunkInterval:80,
-  chunkDelay:20,
-  maxClusterRadius:55,
-  disableClusteringAtZoom:16,
-  spiderfyOnMaxZoom:true,
-  showCoverageOnHover:false,
-  animate:true,
-  animateAddingMarkers:false
-});
-
-map.addLayer(layer);
-
-/* Layer khusus marker hasil pencarian */
-const selectedLayer = L.layerGroup().addTo(map);
-
-/* Perbaikan zoom/resize */
-map.on("zoomend",()=>{
-  map.invalidateSize({pan:false});
-});
-
-window.addEventListener("resize",()=>{
-  map.invalidateSize({pan:false});
-});
-
-/* =========================
-   VARIABEL
-   ========================= */
+// ======================================================
+// 5. DATA & STATE
+// ======================================================
 let allRows = [];
 let visibleRows = [];
+let userLocation = null;
 let userMarker = null;
-let userCircle = null;
-let selectedMarker = null;
-let colors = {};
-let satelliteOn = false;
 
-const status = document.getElementById("status");
-const search = document.getElementById("search");
-const suggestions = document.getElementById("suggestions");
-const kabupatenSelect = document.getElementById("kabupaten");
+const cluster = L.markerClusterGroup({
+  chunkedLoading: true,
+  chunkInterval: 80,
+  chunkDelay: 20,
+  maxClusterRadius: 45,
+  spiderfyOnMaxZoom: true,
+  showCoverageOnHover: false,
+  removeOutsideVisibleBounds: true
+});
 
-/* =========================
-   UTILITAS
-   ========================= */
-function esc(v){
-  return String(v ?? "").replace(/[&<>"']/g,c=>({
-    "&":"&amp;",
-    "<":"&lt;",
-    ">":"&gt;",
-    '"':"&quot;",
-    "'":"&#39;"
-  }[c]));
+map.addLayer(cluster);
+
+
+// ======================================================
+// 6. HELPER
+// ======================================================
+const $ = id => document.getElementById(id);
+
+const search = $("search");
+const suggestions = $("suggestions");
+const kabupaten = $("kabupaten");
+const status = $("status");
+const loading = $("loading");
+
+function clean(v) {
+  return String(v ?? "").trim();
 }
 
-function normalize(s){
-  return String(s ?? "").trim().toLowerCase();
+function norm(v) {
+  return clean(v)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
 }
 
-/* Parser CSV sederhana tetapi aman untuk koma dalam tanda kutip */
-function parseCSV(text){
-  const rows=[];
-  let row=[],cell="",quoted=false;
+function num(v) {
+  let s = clean(v).replace(/\s/g, "");
+  if (!s) return NaN;
 
-  for(let i=0;i<text.length;i++){
-    const c=text[i];
-    const n=text[i+1];
+  // Contoh: -4.995.378,6
+  if (/^-?\d{1,3}(\.\d{3})+,\d+$/.test(s)) {
+    s = s.replace(/\./g, "").replace(",", ".");
+  }
+  // Contoh: 1,055,349.567
+  else if (/^-?\d{1,3}(,\d{3})+\.\d+$/.test(s)) {
+    s = s.replace(/,/g, "");
+  }
+  // Contoh: -4,995378
+  else if (s.includes(",") && !s.includes(".")) {
+    s = s.replace(",", ".");
+  }
+  // Contoh: 1,055349567
+  else {
+    s = s.replace(/,/g, "");
+  }
 
-    if(quoted){
-      if(c === '"' && n === '"'){
-        cell+='"';
-        i++;
-      }else if(c === '"'){
-        quoted=false;
-      }else{
-        cell+=c;
-      }
-    }else{
-      if(c === '"'){
-        quoted=true;
-      }else if(c === ','){
-        row.push(cell);
-        cell="";
-      }else if(c === '\n'){
-        row.push(cell);
-        rows.push(row);
-        row=[];
-        cell="";
-      }else if(c !== '\r'){
-        cell+=c;
-      }
+  return Number(s);
+}
+
+function escapeHtml(s) {
+  return clean(s).replace(
+    /[&<>"']/g,
+    m => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;"
+    }[m])
+  );
+}
+
+
+// ======================================================
+// 7. CSV PARSER
+// ======================================================
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let quoted = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    const n = text[i + 1];
+
+    if (c === '"' && quoted && n === '"') {
+      cell += '"';
+      i++;
+      continue;
     }
+
+    if (c === '"') {
+      quoted = !quoted;
+      continue;
+    }
+
+    if (c === "," && !quoted) {
+      row.push(cell);
+      cell = "";
+      continue;
+    }
+
+    if ((c === "\n" || c === "\r") && !quoted) {
+      if (c === "\r" && n === "\n") i++;
+
+      row.push(cell);
+      cell = "";
+
+      if (row.some(x => clean(x) !== "")) {
+        rows.push(row);
+      }
+
+      row = [];
+      continue;
+    }
+
+    cell += c;
   }
 
   row.push(cell);
-  if(row.some(x=>x.trim()!=="")) rows.push(row);
 
-  if(!rows.length) return [];
-
-  const headers=rows[0].map(x=>normalize(x));
-
-  return rows.slice(1).map(r=>{
-    const o={};
-
-    headers.forEach((h,i)=>{
-      o[h]=(r[i] ?? "").trim();
-    });
-
-    /* Dukungan nama kolom Google Sheets */
-    const kab =
-      o["kabupaten / kota"] ||
-      o["kabupaten/kota"] ||
-      o["kabupaten"] ||
-      o["kota"] ||
-      "";
-
-    if(kab) o.kabupaten=kab;
-
-    const kec=o["kecamatan"] || "";
-    if(kec) o.kecamatan=kec;
-
-    return o;
-  });
-}
-
-function num(v){
-  if(v===null || v===undefined || v==="") return NaN;
-
-  let s=String(v).trim().replace(/\s/g,"");
-
-  /* Menangani format data lama seperti -49,953,786 */
-  if((s.match(/,/g)||[]).length>1){
-    const neg=s.startsWith("-") ? -1 : 1;
-    s=s.replace(/-/g,"").replace(/,/g,"");
-
-    if(s.length>1){
-      s=s.slice(0,1)+"."+s.slice(1);
-    }
-
-    return neg*parseFloat(s);
+  if (row.some(x => clean(x) !== "")) {
+    rows.push(row);
   }
 
-  if(s.includes(",") && !s.includes(".")){
-    s=s.replace(",",".");
-  }
-
-  return parseFloat(s);
+  return rows;
 }
 
-function getCoord(r){
-  let lat=num(r.latitude_benar);
-  let lng=num(r.longitude_benar);
 
-  if(!Number.isFinite(lat)) lat=num(r.latitude);
-  if(!Number.isFinite(lng)) lng=num(r.longitude);
+// ======================================================
+// 8. UBAH CSV MENJADI DATA WARUNG
+// ======================================================
+function makeObjects(csv) {
+  const raw = parseCSV(csv);
 
-  return {lat,lng};
-}
+  if (raw.length < 2) return [];
 
-/* =========================
-   WARNA KABUPATEN
-   ========================= */
-function colorFor(k){
-  const key=k || "Tanpa Kabupaten";
-
-  if(!colors[key]){
-    const hue=(Object.keys(colors).length*47)%360;
-    colors[key]=`hsl(${hue},70%,45%)`;
-  }
-
-  return colors[key];
-}
-
-function makeIcon(color){
-  return L.divIcon({
-    className:"",
-    html:`<div style="
-      width:22px;
-      height:22px;
-      border-radius:50% 50% 50% 0;
-      background:${color};
-      transform:rotate(-45deg);
-      border:2px solid white;
-      box-shadow:0 2px 5px rgba(0,0,0,.35);
-      position:relative">
-      <div style="
-        width:7px;
-        height:7px;
-        border-radius:50%;
-        background:white;
-        position:absolute;
-        left:7px;
-        top:7px">
-      </div>
-    </div>`,
-    iconSize:[26,26],
-    iconAnchor:[13,26],
-    popupAnchor:[0,-24]
-  });
-}
-
-function makeSearchIcon(){
-  return L.divIcon({
-    className:"",
-    html:`<div class="search-highlight"></div>`,
-    iconSize:[42,42],
-    iconAnchor:[21,21],
-    popupAnchor:[0,-22]
-  });
-}
-
-/* =========================
-   POPUP
-   ========================= */
-function popupHtml(r){
-  const {lat,lng}=getCoord(r);
-
-  const name=esc(r.name || "Warung");
-  const kab=esc(r.kabupaten || "Tidak diisi");
-  const desc=esc(r.description || "");
-
-  const maps=
-    `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-
-  return `
-    <div style="min-width:220px;max-width:300px">
-      <b style="font-size:16px">${name}</b>
-
-      <div style="margin:6px 0">
-        <b>Kabupaten:</b> ${kab}
-      </div>
-
-      ${desc ? `<div style="margin-bottom:8px">${desc}</div>` : ""}
-
-      <a href="${maps}"
-         target="_blank"
-         rel="noopener"
-         style="
-           display:inline-block;
-           background:#1a73e8;
-           color:white;
-           padding:8px 11px;
-           border-radius:6px;
-           text-decoration:none">
-        🗺️ Lihat di Google Maps
-      </a>
-    </div>`;
-}
-
-/* =========================
-   RENDER SEMUA WARUNG
-   ========================= */
-function render(list,fit=false){
-  layer.clearLayers();
-  selectedLayer.clearLayers();
-  selectedMarker=null;
-  visibleRows=list;
-
-  const markers=[];
-
-  list.forEach(r=>{
-    const {lat,lng}=getCoord(r);
-
-    if(!Number.isFinite(lat)||!Number.isFinite(lng)) return;
-
-    const kab=r.kabupaten || "";
-
-    const marker=L.marker(
-      [lat,lng],
-      {icon:makeIcon(colorFor(kab))}
-    );
-
-    marker.bindPopup(popupHtml(r));
-    marker._row=r;
-
-    markers.push(marker);
-  });
-
-  layer.addLayers(markers);
-
-  status.textContent=
-    `Menampilkan ${markers.length.toLocaleString("id-ID")} warung`;
-
-  if(fit && markers.length){
-    const group=L.featureGroup(markers);
-    map.fitBounds(group.getBounds().pad(0.12));
-  }
-}
-
-/* =========================
-   FILTER KABUPATEN
-   ========================= */
-function populateKabupaten(){
-  const vals=[
-    ...new Set(
-      allRows
-        .map(r=>r.kabupaten)
-        .filter(Boolean)
-    )
-  ].sort((a,b)=>a.localeCompare(b,"id"));
-
-  const oldValue=kabupatenSelect.value;
-
-  kabupatenSelect.innerHTML=
-    '<option value="">🏘️ Semua Kabupaten / Kota</option>';
-
-  vals.forEach(v=>{
-    const o=document.createElement("option");
-    o.value=v;
-    o.textContent=v;
-    kabupatenSelect.appendChild(o);
-  });
-
-  if(vals.includes(oldValue)){
-    kabupatenSelect.value=oldValue;
-  }
-}
-
-function applyKabupatenFilter(fit=false){
-  const selected=normalize(kabupatenSelect.value);
-
-  const filtered=allRows.filter(r=>{
-    return !selected || normalize(r.kabupaten)===selected;
-  });
-
-  /* Filter Kabupaten memang menyaring marker */
-  render(filtered,fit);
-}
-
-/* =========================
-   AUTOCOMPLETE
-   ========================= */
-function showSuggestions(){
-  const q=normalize(search.value);
-
-  suggestions.innerHTML="";
-
-  if(!q){
-    suggestions.style.display="none";
-    return;
-  }
-
-  const matches=allRows
-    .filter(r=>{
-      const text=[
-        r.name,
-        r.description,
-        r.kabupaten,
-        r.kecamatan
-      ].map(normalize).join(" ");
-
-      return text.includes(q);
-    })
-    .sort((a,b)=>{
-      const an=normalize(a.name);
-      const bn=normalize(b.name);
-
-      /* Nama yang diawali query ditempatkan paling atas */
-      const as=an.startsWith(q) ? 0 : 1;
-      const bs=bn.startsWith(q) ? 0 : 1;
-
-      if(as!==bs) return as-bs;
-      return an.localeCompare(bn,"id");
-    })
-    .slice(0,10);
-
-  if(!matches.length){
-    suggestions.innerHTML=
-      `<div class="suggestion">
-        <b>Tidak ada warung ditemukan</b>
-        <small>Coba kata kunci lain.</small>
-      </div>`;
-
-    suggestions.style.display="block";
-    return;
-  }
-
-  matches.forEach(r=>{
-    const d=document.createElement("div");
-
-    d.className="suggestion";
-
-    d.innerHTML=`
-      <b>${esc(r.name || "Warung")}</b>
-      <small>
-        🏘️ ${esc(r.kabupaten || "Kabupaten belum diisi")}
-      </small>`;
-
-    d.onclick=()=>selectSuggestion(r);
-
-    suggestions.appendChild(d);
-  });
-
-  suggestions.style.display="block";
-}
-
-/*
-  PENTING:
-  Pencarian TIDAK memfilter semua marker.
-  Semua warung tetap ditampilkan.
-  Pencarian hanya mengarahkan peta ke warung yang dipilih
-  dan memberikan marker highlight.
-*/
-function selectSuggestion(r){
-  search.value=r.name || "";
-
-  suggestions.style.display="none";
-
-  /* Hapus highlight sebelumnya */
-  selectedLayer.clearLayers();
-  selectedMarker=null;
-
-  const {lat,lng}=getCoord(r);
-
-  if(!Number.isFinite(lat)||!Number.isFinite(lng)){
-    status.textContent="Koordinat warung tidak tersedia.";
-    return;
-  }
-
-  /*
-    Jika sedang memakai filter Kabupaten, pertahankan filter tersebut.
-    Tetapi jika warung yang dicari berada di luar filter, kita otomatis
-    kembalikan dropdown ke Semua Kabupaten agar warung tetap bisa dilihat.
-  */
-  const selected=normalize(kabupatenSelect.value);
-
-  if(selected && normalize(r.kabupaten)!==selected){
-    kabupatenSelect.value="";
-    render(allRows,false);
-  }else if(!selected){
-    /* Semua marker tetap ada */
-    render(allRows,false);
-  }else{
-    applyKabupatenFilter(false);
-  }
-
-  /* Zoom ke warung */
-  map.setView([lat,lng],17,{animate:true});
-
-  /* Marker highlight */
-  selectedMarker=L.marker(
-    [lat,lng],
-    {icon:makeSearchIcon(),zIndexOffset:2000}
+  const headers = raw[0].map(x =>
+    norm(x).replace(/[^a-z0-9_]/g, "_")
   );
 
-  selectedMarker.bindPopup(popupHtml(r),{
-    autoPan:true,
-    autoPanPaddingTopLeft:[20,180],
-    autoPanPaddingBottomRight:[20,40]
-  });
-
-  selectedMarker._row=r;
-  selectedMarker.addTo(selectedLayer);
-
-  setTimeout(()=>{
-    if(selectedMarker){
-      selectedMarker.openPopup();
+  function idx(names) {
+    for (const name of names) {
+      const key = norm(name).replace(/[^a-z0-9_]/g, "_");
+      const i = headers.indexOf(key);
+      if (i >= 0) return i;
     }
-  },350);
+    return -1;
+  }
+
+  const iName = idx([
+    "name",
+    "nama",
+    "nama_warung",
+    "warung"
+  ]);
+
+  const iLat = idx([
+    "latitude_benar",
+    "latitude",
+    "lat"
+  ]);
+
+  const iLng = idx([
+    "longitude_benar",
+    "longitude",
+    "lng",
+    "lon"
+  ]);
+
+  const iDesc = idx([
+    "description",
+    "deskripsi",
+    "alamat",
+    "keterangan"
+  ]);
+
+  const iKab = idx([
+    "kabupaten_kota",
+    "kabupaten / kota",
+    "kabupaten/kota",
+    "kabupaten",
+    "kota"
+  ]);
+
+  return raw
+    .slice(1)
+    .map(r => ({
+      name: clean(r[iName]),
+      lat: num(r[iLat]),
+      lng: num(r[iLng]),
+      desc: clean(r[iDesc]),
+      kab: clean(r[iKab])
+    }))
+    .filter(
+      x =>
+        x.name &&
+        Number.isFinite(x.lat) &&
+        Number.isFinite(x.lng)
+    );
 }
 
-/* =========================
-   PENCARIAN
-   ========================= */
-search.addEventListener("input",()=>{
-  showSuggestions();
 
-  /*
-    Saat teks diketik, marker tidak dihapus.
-    Jadi user tetap melihat semua warung.
-  */
-});
+// ======================================================
+// 9. WARNA MARKER
+// ======================================================
+function colorForKab(k) {
+  const n = norm(k);
 
-search.addEventListener("keydown",e=>{
-  if(e.key==="Escape"){
-    suggestions.style.display="none";
+  if (n.includes("lampung tengah")) return "#d32f2f";
+  if (n.includes("lampung timur")) return "#c9a227";
+  if (n.includes("lampung utara")) return "#25a85a";
+  if (n.includes("tulang bawang")) return "#16a085";
+  if (n.includes("tulang bawang barat")) return "#16a085";
+
+  const palette = [
+    "#7b61a8",
+    "#e67e22",
+    "#2e86de",
+    "#8e44ad",
+    "#00897b",
+    "#c2185b",
+    "#6d4c41"
+  ];
+
+  let h = 0;
+  for (let i = 0; i < n.length; i++) {
+    h = (h * 31 + n.charCodeAt(i)) >>> 0;
+  }
+
+  return palette[h % palette.length];
+}
+
+
+// ======================================================
+// 10. ICON MARKER
+// ======================================================
+function markerIcon(row, highlighted = false) {
+  const color = colorForKab(row.kab);
+  const size = highlighted ? 34 : 30;
+  const opacity = highlighted ? 1 : 0.35;
+
+  return L.divIcon({
+    className: "custom-marker",
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size],
+
+    html: `
+      <div style="
+        width:${size}px;
+        height:${size}px;
+        border-radius:50% 50% 50% 0;
+        transform:rotate(-45deg);
+        background:${color};
+        opacity:${opacity};
+        border:3px solid #fff;
+        box-shadow:0 2px 6px rgba(0,0,0,.35);
+      ">
+        <div style="
+          transform:rotate(45deg);
+          color:#fff;
+          text-align:center;
+          font-weight:bold;
+          font-size:12px;
+          line-height:${size - 6}px;
+        ">●</div>
+      </div>
+    `
+  });
+}
+
+
+// ======================================================
+// 11. GOOGLE MAPS
+// ======================================================
+function mapsUrl(row) {
+  return (
+    "https://www.google.com/maps/search/?api=1&query=" +
+    encodeURIComponent(row.lat + "," + row.lng)
+  );
+}
+
+
+// ======================================================
+// 12. POPUP
+// ======================================================
+function popupHtml(row) {
+  return `
+    <div>
+      <div class="popup-title">
+        ${escapeHtml(row.name)}
+      </div>
+
+      <div class="popup-kab">
+        <b>Kabupaten:</b>
+        ${escapeHtml(row.kab || "Tidak diisi")}
+      </div>
+
+      <div class="popup-desc">
+        ${escapeHtml(row.desc || "Tidak ada keterangan")}
+      </div>
+
+      <a
+        class="maps-btn"
+        href="${mapsUrl(row)}"
+        target="_blank"
+        rel="noopener"
+      >
+        🗺️ Lihat di Google Maps
+      </a>
+    </div>
+  `;
+}
+
+
+// ======================================================
+// 13. RENDER MARKER
+// ======================================================
+function render(rows = allRows, fit = false) {
+  cluster.clearLayers();
+
+  visibleRows = rows;
+
+  const searchTerm = norm(search.value);
+
+  rows.forEach(row => {
+    const hit =
+      !searchTerm ||
+      norm(row.name + " " + row.desc + " " + row.kab)
+        .includes(searchTerm);
+
+    const marker = L.marker(
+      [row.lat, row.lng],
+      {
+        icon: markerIcon(row, hit)
+      }
+    );
+
+    marker.bindPopup(
+      popupHtml(row),
+      {
+        autoPan: true,
+
+        // Popup akan diberi ruang dari bilah pencarian.
+        // Jadi saat hasil dicari, popup tidak tertutup kontrol.
+        autoPanPaddingTopLeft: [20, 190],
+        autoPanPaddingBottomRight: [20, 40]
+      }
+    );
+
+    cluster.addLayer(marker);
+  });
+
+  status.textContent =
+    `Menampilkan ${rows.length.toLocaleString("id-ID")} warung`;
+
+  if (fit && rows.length) {
+    const bounds = L.latLngBounds(
+      rows.map(r => [r.lat, r.lng])
+    );
+
+    if (bounds.isValid()) {
+      map.fitBounds(bounds, {
+        paddingTopLeft: [30, 180],
+        paddingBottomRight: [30, 30],
+        maxZoom: 15
+      });
+    }
+  }
+}
+
+
+// ======================================================
+// 14. DROPDOWN KABUPATEN/KOTA
+// ======================================================
+function fillKabupaten() {
+  const vals = [
+    ...new Set(
+      allRows
+        .map(r => r.kab)
+        .filter(Boolean)
+    )
+  ].sort((a, b) => a.localeCompare(b, "id"));
+
+  kabupaten.innerHTML =
+    '<option value="">🏠 Semua Kabupaten / Kota</option>';
+
+  vals.forEach(v => {
+    const option = document.createElement("option");
+    option.value = v;
+    option.textContent = v;
+    kabupaten.appendChild(option);
+  });
+}
+
+
+// ======================================================
+// 15. FILTER
+// ======================================================
+function filteredRows() {
+  const k = norm(kabupaten.value);
+
+  if (!k) return allRows;
+
+  return allRows.filter(
+    r => norm(r.kab) === k
+  );
+}
+
+function applyFilters(fit = false) {
+  render(filteredRows(), fit);
+}
+
+
+// ======================================================
+// 16. AUTOCOMPLETE / SARAN
+// ======================================================
+function showSuggestions() {
+  const q = norm(search.value);
+
+  if (!q) {
+    suggestions.style.display = "none";
     return;
   }
 
-  if(e.key==="Enter"){
-    const first=suggestions.querySelector(".suggestion");
+  const matches = allRows
+    .filter(r =>
+      norm(
+        r.name + " " +
+        r.desc + " " +
+        r.kab
+      ).includes(q)
+    )
+    .slice(0, 12);
 
-    if(first && first.querySelector("b")){
-      first.click();
-    }
+  suggestions.innerHTML = "";
+
+  matches.forEach(r => {
+    const div = document.createElement("div");
+
+    div.className = "suggestion";
+
+    div.innerHTML = `
+      <div class="name">
+        ${escapeHtml(r.name)}
+      </div>
+      <div class="meta">
+        🏠 ${escapeHtml(
+          r.kab || "Kabupaten belum diisi"
+        )}
+      </div>
+    `;
+
+    div.onclick = () => {
+      search.value = r.name;
+      suggestions.style.display = "none";
+
+      // SEMUA WARUNG TETAP DITAMPILKAN.
+      // Hanya hasil yang dicari dibuat lebih menonjol.
+      render(filteredRows(), false);
+
+      map.setView(
+        [r.lat, r.lng],
+        16,
+        { animate: true }
+      );
+
+      setTimeout(() => {
+        let found = false;
+
+        cluster.eachLayer(marker => {
+          const pos = marker.getLatLng();
+
+          if (
+            Math.abs(pos.lat - r.lat) < 0.000001 &&
+            Math.abs(pos.lng - r.lng) < 0.000001
+          ) {
+            marker.openPopup();
+            found = true;
+          }
+        });
+
+        // Jika marker sedang berada di dalam cluster,
+        // zoom sedikit lebih dekat agar popup dapat dibuka.
+        if (!found) {
+          map.setView([r.lat, r.lng], 17, {animate:true});
+
+          setTimeout(() => {
+            cluster.eachLayer(marker => {
+              const pos = marker.getLatLng();
+
+              if (
+                Math.abs(pos.lat - r.lat) < 0.000001 &&
+                Math.abs(pos.lng - r.lng) < 0.000001
+              ) {
+                marker.openPopup();
+              }
+            });
+          }, 250);
+        }
+      }, 300);
+    };
+
+    suggestions.appendChild(div);
+  });
+
+  suggestions.style.display =
+    matches.length ? "block" : "none";
+}
+
+
+// ======================================================
+// 17. EVENT SEARCH
+// ======================================================
+let searchTimer;
+
+search.addEventListener("input", () => {
+  clearTimeout(searchTimer);
+
+  showSuggestions();
+
+  searchTimer = setTimeout(() => {
+    // Jangan menghapus warung lain.
+    render(filteredRows(), false);
+  }, 80);
+});
+
+search.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    suggestions.style.display = "none";
   }
 });
 
-/* Klik di luar panel -> tutup saran */
-document.addEventListener("click",e=>{
-  if(!document.getElementById("searchBox").contains(e.target)){
-    suggestions.style.display="none";
+document.addEventListener("click", e => {
+  if (!e.target.closest(".search-row")) {
+    suggestions.style.display = "none";
   }
 });
 
-/* Filter Kabupaten */
-kabupatenSelect.addEventListener("change",()=>{
-  search.value="";
-  suggestions.style.display="none";
-  applyKabupatenFilter(true);
+
+// ======================================================
+// 18. FILTER KABUPATEN
+// ======================================================
+kabupaten.addEventListener("change", () => {
+  search.value = "";
+  suggestions.style.display = "none";
+  applyFilters(true);
 });
 
-/* =========================
-   REFRESH
-   ========================= */
-document.getElementById("refresh").onclick=()=>{
-  loadData();
+
+// ======================================================
+// 19. MUAT ULANG
+// ======================================================
+$("refresh").onclick = loadData;
+
+
+// ======================================================
+// 20. SATELIT / PETA JALAN
+// ======================================================
+$("satellite").onclick = () => {
+  if (currentBase === "road") {
+
+    map.removeLayer(roadLayer);
+    satelliteLayer.addTo(map);
+
+    currentBase = "satellite";
+    $("satellite").textContent = "🗺️ Peta Jalan";
+
+  } else {
+
+    map.removeLayer(satelliteLayer);
+    roadLayer.addTo(map);
+
+    currentBase = "road";
+    $("satellite").textContent = "🛰️ Satelit";
+  }
+
+  // Paksa Leaflet menghitung ulang ukuran setelah pergantian layer.
+  setTimeout(() => map.invalidateSize(), 100);
 };
 
-/* =========================
-   SATELIT / PETA JALAN
-   ========================= */
-document.getElementById("satellite").onclick=()=>{
-  satelliteOn=!satelliteOn;
 
-  if(satelliteOn){
-    removeStreetLayers();
-
-    satellite.addTo(map);
-    satellite.bringToBack();
-    document.getElementById("satellite").textContent="🗺️ Peta Jalan";
-  }else{
-    showStreet();
-    document.getElementById("satellite").textContent="🛰️ Satelit";
-  }
-
-  setTimeout(()=>map.invalidateSize({pan:false}),100);
-};
-
-/* =========================
-   LOKASI SAYA
-   ========================= */
-document.getElementById("locate").onclick=()=>{
-  if(!navigator.geolocation){
+// ======================================================
+// 21. LOKASI SAYA
+// ======================================================
+$("locate").onclick = () => {
+  if (!navigator.geolocation) {
     alert("Browser tidak mendukung lokasi.");
     return;
   }
 
-  status.textContent="Mencari lokasi Anda...";
-
   navigator.geolocation.getCurrentPosition(
-    pos=>{
-      const lat=pos.coords.latitude;
-      const lng=pos.coords.longitude;
+    pos => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
 
-      if(userMarker) map.removeLayer(userMarker);
-      if(userCircle) map.removeLayer(userCircle);
+      userLocation = [lat, lng];
 
-      userMarker=L.marker([lat,lng])
-        .addTo(map)
-        .bindPopup("📍 Lokasi Anda")
-        .openPopup();
+      if (userMarker) {
+        map.removeLayer(userMarker);
+      }
 
-      userCircle=L.circle([lat,lng],{
-        radius:pos.coords.accuracy || 50,
-        color:"#1976d2",
-        fillOpacity:.12
-      }).addTo(map);
+      userMarker = L.marker(
+        [lat, lng],
+        {
+          icon: L.divIcon({
+            className: "",
+            iconSize: [18, 18],
+            iconAnchor: [9, 9],
 
-      map.setView([lat,lng],14);
+            html: `
+              <div style="
+                width:18px;
+                height:18px;
+                border-radius:50%;
+                background:#1976d2;
+                border:3px solid #fff;
+                box-shadow:0 1px 6px rgba(0,0,0,.4);
+              "></div>
+            `
+          })
+        }
+      )
+      .addTo(map)
+      .bindPopup("📍 Lokasi Saya");
 
-      status.textContent="Lokasi Anda ditemukan.";
+      map.setView(
+        [lat, lng],
+        15,
+        { animate: true }
+      );
     },
-    err=>{
-      console.error(err);
-      status.textContent="Lokasi tidak dapat diperoleh.";
-      alert("Izinkan akses lokasi pada browser, lalu coba lagi.");
+
+    () => {
+      alert(
+        "Lokasi tidak dapat diambil. " +
+        "Pastikan izin lokasi di browser sudah diaktifkan."
+      );
     },
+
     {
-      enableHighAccuracy:true,
-      timeout:10000,
-      maximumAge:30000
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 60000
     }
   );
 };
 
-/* =========================
-   WARUNG TERDEKAT
-   ========================= */
-document.getElementById("nearby").onclick=()=>{
-  if(!userMarker){
-    alert("Klik 📍 Lokasi Saya terlebih dahulu.");
+
+// ======================================================
+// 22. WARUNG TERDEKAT
+// ======================================================
+$("nearby").onclick = () => {
+  if (!userLocation) {
+    alert(
+      "Klik '📍 Lokasi Saya' terlebih dahulu agar " +
+      "jarak warung dapat dihitung."
+    );
     return;
   }
 
-  const user=userMarker.getLatLng();
+  const [ul, un] = userLocation;
 
-  const nearby=allRows
-    .map(r=>{
-      const c=getCoord(r);
+  function distanceKm(r) {
+    const dx = (r.lat - ul) * 111;
+    const dy =
+      (r.lng - un) *
+      111 *
+      Math.cos(ul * Math.PI / 180);
 
-      if(!Number.isFinite(c.lat)||!Number.isFinite(c.lng)){
-        return null;
-      }
+    return Math.sqrt(dx * dx + dy * dy);
+  }
 
-      const d=map.distance(user,[c.lat,c.lng]);
-
-      return {...r,_distance:d};
-    })
-    .filter(Boolean)
-    .sort((a,b)=>a._distance-b._distance)
-    .slice(0,10);
-
-  const list=document.getElementById("nearbyList");
-  list.innerHTML="";
-
-  nearby.forEach(r=>{
-    const d=document.createElement("div");
-
-    d.className="nearbyItem";
-
-    const distance=
-      r._distance<1000
-        ? `${Math.round(r._distance)} m`
-        : `${(r._distance/1000).toFixed(1)} km`;
-
-    d.innerHTML=`
-      <b>${esc(r.name||"Warung")}</b>
-      <small>
-        🏘️ ${esc(r.kabupaten||"Kabupaten belum diisi")}
-        · 📏 ${distance}
-      </small>`;
-
-    d.onclick=()=>{
-      selectSuggestion(r);
-      closeNearby();
-    };
-
-    list.appendChild(d);
-  });
-
-  document.getElementById("nearbyPanel").style.display="block";
-};
-
-function closeNearby(){
-  document.getElementById("nearbyPanel").style.display="none";
-}
-
-/* =========================
-   LEGEND
-   ========================= */
-const legend=L.control({position:"bottomright"});
-
-legend.onAdd=function(){
-  const div=L.DomUtil.create("div","legend");
-  div.innerHTML="<b>🏘️ Kabupaten</b><br>";
-  return div;
-};
-
-legend.addTo(map);
-
-function updateLegend(){
-  const el=document.querySelector(".legend");
-
-  if(!el) return;
-
-  const vals=[
-    ...new Set(
-      allRows
-        .map(r=>r.kabupaten)
-        .filter(Boolean)
+  const rows = [...filteredRows()]
+    .sort(
+      (a, b) =>
+        distanceKm(a) - distanceKm(b)
     )
-  ].sort((a,b)=>a.localeCompare(b,"id"));
+    .slice(0, 100);
 
-  el.innerHTML=
-    "<b>🏘️ Kabupaten</b><br>"+
-    vals.map(k=>
-      `<div>
-        <i style="background:${colorFor(k)}"></i>
-        ${esc(k)}
-      </div>`
-    ).join("");
-}
+  render(rows, true);
+};
 
-/* =========================
-   LOAD DATA
-   ========================= */
-async function loadData(){
-  status.textContent="Memuat data dari Google Sheets...";
 
-  try{
-    const controller=new AbortController();
-    const timeout=setTimeout(()=>controller.abort(),20000);
+// ======================================================
+// 23. LOAD DATA
+// ======================================================
+async function loadData() {
 
-    const url=CSV_URL+"&_="+Date.now();
+  if (
+    !CSV_URL ||
+    CSV_URL.includes("PASTE_URL")
+  ) {
+    status.textContent =
+      "URL CSV belum diisi";
 
-    const res=await fetch(url,{
-      cache:"no-store",
-      signal:controller.signal
-    });
+    alert(
+      "Index.html sudah siap.\\n\\n" +
+      "Isi variabel CSV_URL di bagian atas " +
+      "dengan URL CSV Google Sheets Anda."
+    );
 
-    clearTimeout(timeout);
+    return;
+  }
 
-    if(!res.ok){
-      throw new Error("HTTP "+res.status);
-    }
+  loading.style.display = "flex";
+  status.textContent = "Memuat data...";
 
-    const text=await res.text();
+  try {
 
-    const parsed=parseCSV(text);
+    const url =
+      CSV_URL +
+      (CSV_URL.includes("?") ? "&" : "?") +
+      "_ts=" +
+      Date.now();
 
-    allRows=parsed.filter(r=>{
-      const c=getCoord(r);
-
-      return (
-        r.name &&
-        Number.isFinite(c.lat) &&
-        Number.isFinite(c.lng)
+    const response =
+      await fetch(
+        url,
+        {
+          cache: "no-store"
+        }
       );
-    });
 
-    if(!allRows.length){
-      throw new Error("Tidak ada data koordinat yang valid.");
+    if (!response.ok) {
+      throw new Error(
+        "HTTP " + response.status
+      );
     }
 
-    populateKabupaten();
-    updateLegend();
+    const text =
+      await response.text();
 
-    /* Saat pertama dimuat, tampilkan semua warung */
-    render(allRows,false);
+    const data =
+      makeObjects(text);
 
-    status.textContent=
-      `Data siap · ${allRows.length.toLocaleString("id-ID")} warung`;
+    if (!data.length) {
+      throw new Error(
+        "Tidak ada data valid. " +
+        "Pastikan kolom name, latitude_benar/latitude, " +
+        "longitude_benar/longitude tersedia."
+      );
+    }
 
-  }catch(err){
+    allRows = data;
+
+    fillKabupaten();
+
+    render(
+      allRows,
+      false
+    );
+
+    // Fit hanya SATU KALI setelah data selesai dimuat.
+    // Setelah itu zoom/pencarian tidak akan memindahkan
+    // peta ke seluruh Indonesia lagi.
+    const bounds =
+      L.latLngBounds(
+        data.map(
+          r => [r.lat, r.lng]
+        )
+      );
+
+    if (bounds.isValid()) {
+      map.fitBounds(
+        bounds,
+        {
+          paddingTopLeft: [30, 170],
+          paddingBottomRight: [30, 30],
+          maxZoom: 13
+        }
+      );
+    }
+
+  } catch (err) {
+
     console.error(err);
 
-    if(err.name==="AbortError"){
-      status.textContent="Waktu memuat data habis.";
-      alert(
-        "Google Sheets terlalu lama merespons. " +
-        "Coba klik ↻ Muat ulang beberapa saat lagi."
-      );
-    }else{
-      status.textContent="Gagal memuat data.";
-      alert(
-        "Data Google Sheets gagal dimuat. " +
-        "Pastikan spreadsheet sudah dipublikasikan ke web."
-      );
-    }
-  }
-}
+    status.textContent =
+      "Gagal memuat data";
 
-/* Mulai */
+    alert(
+      "Data Google Sheets gagal dimuat.\\n\\n" +
+      "Pastikan Sheet sudah dipublikasikan sebagai CSV " +
+      "dan URL CSV benar.\\n\\n" +
+      err.message
+    );
+
+  } finally {
+
+    loading.style.display = "none";
+  }
+};
+
+
+// ======================================================
+// 24. RESPONSIVE / RESIZE
+// ======================================================
+window.addEventListener(
+  "resize",
+  () => map.invalidateSize()
+);
+
+window.addEventListener(
+  "orientationchange",
+  () => {
+    setTimeout(
+      () => map.invalidateSize(),
+      300
+    );
+  }
+);
+
+
+// ======================================================
+// 25. MULAI
+// ======================================================
 loadData();
+
 </script>
 </body>
 </html>
