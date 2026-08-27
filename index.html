@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Peta Warung IGP - Modern</title>
-<meta name="version" content="2026-08-27-modern-blue-green-v1">
+<meta name="version" content="2026-08-27-modern-blue-green-v2-vivid-solid-panel">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
@@ -781,6 +781,55 @@ select option{
   color:#1687c8 !important;
 }
 
+
+/* =====================================================
+   PERBAIKAN WARNA PETA + PANEL TANPA BLUR
+   ===================================================== */
+
+/* Peta dibuat lebih hidup dan tidak pucat */
+.leaflet-tile-pane{
+  filter:saturate(1.22) contrast(1.10) brightness(1.03);
+  -webkit-filter:saturate(1.22) contrast(1.10) brightness(1.03);
+}
+
+/* Bar fitur dibuat solid, tanpa efek blur */
+#topPanel{
+  background:linear-gradient(135deg,#0b6f73 0%,#0b8775 55%,#1687b5 100%);
+  border:1px solid rgba(255,255,255,.28);
+  box-shadow:0 14px 34px rgba(3,42,48,.24);
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+}
+
+/* Kolom pencarian dibuat putih solid agar lebih jelas */
+#search{
+  background:#f8fffd !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+}
+
+/* Tombol fitur tetap modern tetapi tanpa kaca/blur */
+#controls button,
+#controls select{
+  background:linear-gradient(135deg,#0f8f83,#167bb5);
+  color:#ffffff;
+  border:1px solid rgba(255,255,255,.20);
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+}
+
+#controls button:hover,
+#controls select:hover{
+  background:linear-gradient(135deg,#0b9f89,#126fa9);
+}
+
+/* Daftar saran dibuat solid dan tajam */
+#suggestions{
+  background:#f8fffd !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+}
+
 </style>
 </head>
 
@@ -891,8 +940,8 @@ const satellite = L.tileLayer(
   }
 );
 
-const streetLayers=[streetEsri,streetOSM];
-let activeStreet=streetEsri;
+const streetLayers=[streetOSM,streetEsri];
+let activeStreet=streetOSM;
 let streetIndex=0;
 let satelliteOn=false;
 let streetErrorCount=0;
@@ -930,8 +979,8 @@ function setActiveStreet(index,{announce=false}={}){
   if(announce){
     status.textContent=
       streetIndex===0
-        ? "Peta jalan memakai server Esri."
-        : "Peta jalan dialihkan ke OpenStreetMap.";
+        ? "Peta jalan memakai OpenStreetMap."
+        : "Peta jalan dialihkan ke server Esri.";
   }
 }
 
