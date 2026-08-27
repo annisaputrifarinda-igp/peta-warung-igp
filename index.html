@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Peta Warung IGP - Nama Warung di Peta</title>
-<meta name="version" content="2026-08-21-labels-v3">
+<title>Peta Warung IGP - Modern</title>
+<meta name="version" content="2026-08-27-modern-v1">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
@@ -310,6 +310,303 @@ button:active{transform:translateY(1px)}
     flex:1 1 auto;
   }
 }
+
+/* =====================================================
+   MODERN UI 2026 – tambahan tanpa menghapus fitur lama
+   ===================================================== */
+:root{
+  --glass:rgba(255,255,255,.78);
+  --glass-strong:rgba(255,255,255,.92);
+  --ink:#172033;
+  --muted:#65708a;
+  --blue:#2563eb;
+  --blue-soft:#eff6ff;
+  --border:rgba(148,163,184,.26);
+  --shadow:0 12px 35px rgba(15,23,42,.16);
+}
+
+body{
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  color:var(--ink);
+  background:#e9eef5;
+}
+
+.leaflet-container{background:#dce5ee}
+
+#topPanel{
+  top:16px;
+  width:min(720px,calc(100vw - 86px));
+}
+
+#search{
+  min-height:50px;
+  padding:13px 16px;
+  border:1px solid var(--border);
+  border-radius:16px;
+  background:var(--glass-strong);
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+  box-shadow:var(--shadow);
+  font-size:15px;
+  transition:.2s ease;
+}
+
+#search::placeholder{color:#8a94a6}
+
+#search:focus{
+  border-color:rgba(37,99,235,.5);
+  box-shadow:0 0 0 4px rgba(37,99,235,.12),var(--shadow);
+}
+
+#suggestions{
+  margin-top:7px;
+  border:1px solid var(--border);
+  border-radius:16px;
+  background:rgba(255,255,255,.96);
+  box-shadow:var(--shadow);
+  backdrop-filter:blur(16px);
+}
+
+.suggestion{
+  padding:12px 15px;
+  border-bottom:1px solid rgba(148,163,184,.15);
+  transition:.16s ease;
+}
+
+.suggestion:hover,.suggestion.active{
+  background:var(--blue-soft);
+  transform:translateX(2px);
+}
+
+.suggestion b{font-size:14px;color:var(--ink)}
+.suggestion small{color:var(--muted)}
+
+#controls{
+  gap:8px;
+  margin-top:10px;
+}
+
+button,select{
+  min-height:42px;
+  border:1px solid var(--border);
+  border-radius:13px;
+  background:var(--glass);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  color:var(--ink);
+  box-shadow:0 8px 22px rgba(15,23,42,.11);
+  font-weight:600;
+  transition:transform .16s ease,background .16s ease,box-shadow .16s ease;
+}
+
+button:hover,select:hover{
+  background:rgba(255,255,255,.96);
+  transform:translateY(-1px);
+  box-shadow:0 11px 26px rgba(15,23,42,.16);
+}
+
+button:active{transform:translateY(0) scale(.98)}
+
+#kabupaten{
+  min-width:225px;
+  max-width:290px;
+}
+
+#status{
+  left:16px;
+  bottom:16px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  background:var(--glass);
+  backdrop-filter:blur(14px);
+  box-shadow:var(--shadow);
+  color:var(--muted);
+  font-weight:600;
+}
+
+#nearbyPanel{
+  top:16px;
+  right:16px;
+  border:1px solid var(--border);
+  border-radius:18px;
+  background:rgba(255,255,255,.94);
+  box-shadow:var(--shadow);
+  backdrop-filter:blur(16px);
+}
+
+#nearbyPanel h3{
+  padding:15px 16px;
+  color:var(--ink);
+  border-color:rgba(148,163,184,.16);
+}
+
+.nearbyItem{
+  padding:12px 16px;
+  border-color:rgba(148,163,184,.14);
+  transition:.15s ease;
+}
+
+.nearbyItem:hover{
+  background:var(--blue-soft);
+}
+
+.legend{
+  border:1px solid var(--border);
+  border-radius:15px;
+  background:rgba(255,255,255,.88);
+  backdrop-filter:blur(14px);
+  box-shadow:var(--shadow);
+}
+
+.warung-label-text{
+  padding:3px 7px;
+  border-radius:8px;
+  background:rgba(255,255,255,.84);
+  backdrop-filter:blur(8px);
+  box-shadow:0 2px 9px rgba(15,23,42,.14);
+  color:#166534;
+}
+
+.warung-label-icon.selected .warung-label-text{
+  background:rgba(255,247,237,.95);
+  color:#c2410c;
+}
+
+.warung-label-pin{
+  box-shadow:0 3px 10px rgba(15,23,42,.28);
+}
+
+.search-highlight{
+  background:linear-gradient(135deg,#fb923c,#f97316);
+  box-shadow:0 0 0 6px rgba(249,115,22,.18),0 7px 18px rgba(15,23,42,.28);
+}
+
+.leaflet-popup-content-wrapper{
+  border-radius:18px;
+  box-shadow:0 18px 45px rgba(15,23,42,.25);
+  overflow:hidden;
+}
+
+.leaflet-popup-content{
+  margin:16px 17px;
+  font-family:inherit;
+}
+
+.leaflet-popup-tip{
+  box-shadow:2px 2px 8px rgba(15,23,42,.12);
+}
+
+.leaflet-popup-close-button{
+  width:32px !important;
+  height:32px !important;
+  line-height:30px !important;
+  border-radius:50%;
+  margin:7px 7px 0 0;
+  background:#f1f5f9 !important;
+  color:#475569 !important;
+}
+
+.cluster-modern,
+.marker-cluster{
+  border-radius:999px !important;
+}
+
+.marker-cluster-small,
+.marker-cluster-medium,
+.marker-cluster-large{
+  background:rgba(37,99,235,.22) !important;
+}
+
+.marker-cluster-small div,
+.marker-cluster-medium div,
+.marker-cluster-large div{
+  background:linear-gradient(135deg,#2563eb,#0ea5e9) !important;
+  color:#fff !important;
+  font-weight:800;
+  box-shadow:0 5px 16px rgba(37,99,235,.28);
+}
+
+.leaflet-control-zoom{
+  border:1px solid var(--border) !important;
+  border-radius:14px !important;
+  overflow:hidden;
+  box-shadow:var(--shadow) !important;
+}
+
+.leaflet-control-zoom a{
+  width:36px !important;
+  height:36px !important;
+  line-height:34px !important;
+  color:#334155 !important;
+  background:rgba(255,255,255,.9) !important;
+}
+
+.leaflet-control-zoom a:hover{
+  background:#fff !important;
+  color:#2563eb !important;
+}
+
+@media(max-width:700px){
+  #topPanel{
+    top:10px;
+    left:50px;
+    width:calc(100vw - 62px);
+  }
+
+  #controls{gap:6px}
+
+  button,select{
+    min-height:40px;
+    border-radius:12px;
+    font-size:13px;
+  }
+
+  #kabupaten{
+    min-width:0;
+    max-width:none;
+    flex:1 1 100%;
+  }
+
+  #nearbyPanel{
+    top:auto;
+    right:10px;
+    bottom:54px;
+    width:calc(100vw - 20px);
+  }
+
+  #status{
+    left:10px;
+    bottom:10px;
+  }
+}
+
+
+/* =========================
+   Saran pencarian wilayah
+   ========================= */
+.suggestion-group-title{
+  padding:9px 15px 7px;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:#64748b;
+  background:rgba(248,250,252,.88);
+  border-bottom:1px solid rgba(148,163,184,.12);
+}
+
+.suggestion-region{
+  background:linear-gradient(90deg,rgba(239,246,255,.75),rgba(255,255,255,.96));
+}
+
+.suggestion-region b{
+  color:#1d4ed8;
+}
+
+.suggestion-region:hover{
+  background:#eff6ff;
+}
+
 </style>
 </head>
 
@@ -322,7 +619,7 @@ button:active{transform:translateY(1px)}
     <input
       id="search"
       autocomplete="off"
-      placeholder="Cari nama warung / alamat / kabupaten..."
+      placeholder="Cari warung atau wilayah (Kabupaten/Kota/Kecamatan)..."
       aria-label="Cari warung"
     >
     <div id="suggestions"></div>
@@ -972,6 +1269,68 @@ function applyKabupatenFilter(fit=false){
 /* =========================
    AUTOCOMPLETE
    ========================= */
+function getRegionSuggestions(q){
+  const groups=[];
+
+  const kabupatenMap=new Map();
+  const kecamatanMap=new Map();
+
+  allRows.forEach(r=>{
+    const kab=String(r.kabupaten || "").trim();
+    const kec=String(r.kecamatan || "").trim();
+
+    if(kab){
+      const key=normalize(kab);
+      if(!kabupatenMap.has(key)){
+        kabupatenMap.set(key,{name:kab,rows:[]});
+      }
+      kabupatenMap.get(key).rows.push(r);
+    }
+
+    if(kec){
+      const key=normalize(kec);
+      if(!kecamatanMap.has(key)){
+        kecamatanMap.set(key,{name:kec,rows:[]});
+      }
+      kecamatanMap.get(key).rows.push(r);
+    }
+  });
+
+  kabupatenMap.forEach(v=>{
+    if(normalize(v.name).includes(q)){
+      groups.push({
+        type:"kabupaten",
+        name:v.name,
+        rows:v.rows
+      });
+    }
+  });
+
+  kecamatanMap.forEach(v=>{
+    if(normalize(v.name).includes(q)){
+      groups.push({
+        type:"kecamatan",
+        name:v.name,
+        rows:v.rows
+      });
+    }
+  });
+
+  return groups
+    .sort((a,b)=>{
+      const as=normalize(a.name).startsWith(q) ? 0 : 1;
+      const bs=normalize(b.name).startsWith(q) ? 0 : 1;
+      if(as!==bs) return as-bs;
+
+      if(a.type!==b.type){
+        return a.type==="kabupaten" ? -1 : 1;
+      }
+
+      return a.name.localeCompare(b.name,"id");
+    })
+    .slice(0,8);
+}
+
 function showSuggestions(){
   const q=normalize(search.value);
 
@@ -982,6 +1341,44 @@ function showSuggestions(){
     return;
   }
 
+  /* =========================
+     SARAN WILAYAH
+     ========================= */
+  const regions=getRegionSuggestions(q);
+
+  if(regions.length){
+    const title=document.createElement("div");
+    title.className="suggestion-group-title";
+    title.textContent="🏘️ Wilayah";
+    suggestions.appendChild(title);
+
+    regions.forEach(region=>{
+      const d=document.createElement("div");
+      d.className="suggestion suggestion-region";
+
+      const icon=
+        region.type==="kabupaten" ? "🏘️" : "📍";
+
+      const typeLabel=
+        region.type==="kabupaten"
+          ? "Kabupaten / Kota"
+          : "Kecamatan";
+
+      d.innerHTML=`
+        <b>${icon} ${esc(region.name)}</b>
+        <small>
+          ${esc(typeLabel)} · ${region.rows.length.toLocaleString("id-ID")} warung
+        </small>`;
+
+      d.onclick=()=>selectRegionSuggestion(region);
+
+      suggestions.appendChild(d);
+    });
+  }
+
+  /* =========================
+     SARAN WARUNG
+     ========================= */
   const matches=allRows
     .filter(r=>{
       const text=[
@@ -997,7 +1394,6 @@ function showSuggestions(){
       const an=normalize(a.name);
       const bn=normalize(b.name);
 
-      /* Nama yang diawali query ditempatkan paling atas */
       const as=an.startsWith(q) ? 0 : 1;
       const bs=bn.startsWith(q) ? 0 : 1;
 
@@ -1006,34 +1402,65 @@ function showSuggestions(){
     })
     .slice(0,10);
 
-  if(!matches.length){
-    suggestions.innerHTML=
-      `<div class="suggestion">
-        <b>Tidak ada warung ditemukan</b>
-        <small>Coba kata kunci lain.</small>
-      </div>`;
+  if(matches.length){
+    const title=document.createElement("div");
+    title.className="suggestion-group-title";
+    title.textContent="🏪 Warung";
+    suggestions.appendChild(title);
 
-    suggestions.style.display="block";
-    return;
+    matches.forEach(r=>{
+      const d=document.createElement("div");
+
+      d.className="suggestion";
+
+      d.innerHTML=`
+        <b>🏪 ${esc(r.name || "Warung")}</b>
+        <small>
+          🏘️ ${esc(r.kabupaten || "Kabupaten belum diisi")}
+        </small>`;
+
+      d.onclick=()=>selectSuggestion(r);
+
+      suggestions.appendChild(d);
+    });
   }
 
-  matches.forEach(r=>{
-    const d=document.createElement("div");
-
-    d.className="suggestion";
-
-    d.innerHTML=`
-      <b>${esc(r.name || "Warung")}</b>
-      <small>
-        🏘️ ${esc(r.kabupaten || "Kabupaten belum diisi")}
-      </small>`;
-
-    d.onclick=()=>selectSuggestion(r);
-
-    suggestions.appendChild(d);
-  });
+  if(!regions.length && !matches.length){
+    suggestions.innerHTML=
+      `<div class="suggestion">
+        <b>Tidak ada hasil ditemukan</b>
+        <small>Coba nama warung, alamat, Kabupaten/Kota, atau Kecamatan.</small>
+      </div>`;
+  }
 
   suggestions.style.display="block";
+}
+
+/* Memilih wilayah dari saran pencarian */
+function selectRegionSuggestion(region){
+  search.value=region.name;
+  suggestions.style.display="none";
+
+  selectedLayer.clearLayers();
+  selectedMarker=null;
+
+  if(region.type==="kabupaten"){
+    /* Sinkronkan dengan filter Kabupaten/Kota yang sudah ada */
+    kabupatenSelect.value=region.name;
+  }else{
+    /* Kecamatan tidak memakai dropdown agar fitur lama tetap utuh */
+    kabupatenSelect.value="";
+  }
+
+  render(region.rows,true);
+
+  const label=
+    region.type==="kabupaten"
+      ? "Kabupaten / Kota"
+      : "Kecamatan";
+
+  status.textContent=
+    `${label}: ${region.name} · ${region.rows.length.toLocaleString("id-ID")} warung`;
 }
 
 /*
