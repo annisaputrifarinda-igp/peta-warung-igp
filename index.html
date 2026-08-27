@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Peta Warung PT Indojaya Global Permai</title>
+<title>Peta Warung IGP - Nama Warung di Peta</title>
 <meta name="version" content="2026-08-21-labels-v3">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -358,9 +358,8 @@ button:active{transform:translateY(1px)}
    DATA GOOGLE SHEETS
    ========================= */
 const CSV_URL =
-"https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1y9u5J-I1L5PGcqDzmxLj7AfJQoYAgDnr0AIkoO3apC2AW53VbZZbEqz4kAwtkVab_f4yMRQHPoPS/pub?output=csv";
-//docs.google.com/spreadsheets/d/e/2PACX-1vQ1y9u5J-I1L5PGcqDzmxLj7AfJQoYAgDnr0AIkoO3apC2AW53VbZZbEqz4kAwtkVab_f4yMRQHPoPS/pubhtml=csv
-//docs.google.com/spreadsheets/d/e/2PACX-1vQP1l3fVYi1dWu0g2UkLdpwcqosl7SUMGqDhibVGx6caqQwHKWWEx-ldWfLxrewHWlSiIm46Bv2uHIb/pub?output=csv
+"https://docs.google.com/spreadsheets/d/e/2PACX-1vQP1l3fVYi1dWu0g2UkLdpwcqosl7SUMGqDhibVGx6caqQwHKWWEx-ldWfLxrewHWlSiIm46Bv2uHIb/pub?output=csv";
+
 /* =========================
    PETA
    ========================= */
@@ -373,33 +372,39 @@ const map = L.map("map", {
 }).setView([-4.8,105.4],9);
 
 /* =====================================================
-   SISTEM PETA BARU
-   Tidak memakai Carto dan tidak memakai placeholder tile.
-   Peta jalan utama = OpenStreetMap.
-   Peta jalan cadangan = Esri World Street Map.
-   Satelit = Esri World Imagery.
-   ===================================================== */
-const streetPrimary = L.tileLayer(
-  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-  {
-    maxZoom:19,
-    maxNativeZoom:19,
-    subdomains:["a","b","c"],
-    updateWhenIdle:false,
-    keepBuffer:2,
-    attribution:"&copy; OpenStreetMap contributors",
-    crossOrigin:true
-  }
-);
+   SISTEM PETA STABIL
 
-const streetFallback = L.tileLayer(
+   Mode peta jalan memakai satu layer aktif pada satu waktu:
+   1. Esri World Street Map sebagai utama
+   2. OpenStreetMap sebagai cadangan
+
+   Mode satelit memakai Esri World Imagery. Jika beberapa tile
+   satelit gagal berturut-turut, peta otomatis kembali ke jalan agar
+   layar tidak menetap abu-abu.
+
+   Tidak ada redraw loop dan tidak ada cache-busting pada URL tile.
+   ===================================================== */
+const streetEsri = L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
   {
     maxZoom:19,
     maxNativeZoom:19,
-    updateWhenIdle:false,
-    keepBuffer:2,
-    attribution:"&copy; Esri"
+    updateWhenIdle:true,
+    updateWhenZooming:false,
+    keepBuffer:3,
+    attribution:"Tiles &copy; Esri"
+  }
+);
+
+const streetOSM = L.tileLayer(
+  "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+  {
+    maxZoom:19,
+    maxNativeZoom:19,
+    updateWhenIdle:true,
+    updateWhenZooming:false,
+    keepBuffer:3,
+    attribution:"&copy; OpenStreetMap contributors"
   }
 );
 
@@ -408,45 +413,140 @@ const satellite = L.tileLayer(
   {
     maxZoom:19,
     maxNativeZoom:19,
-    updateWhenIdle:false,
-    keepBuffer:2,
-    attribution:"&copy; Esri"
+    updateWhenIdle:true,
+    updateWhenZooming:false,
+    keepBuffer:3,
+    attribution:"Tiles &copy; Esri"
   }
 );
 
-let activeStreet = streetPrimary;
-let satelliteOn = false;
-let streetErrorCount = 0;
-let satelliteErrorCount = 0;
-let mapLayerSwitching = false;
+const streetLayers=[streetEsri,streetOSM];
+let activeStreet=streetEsri;
+let streetIndex=0;
+let satelliteOn=false;
+let streetErrorCount=0;
+let satelliteErrorCount=0;
+let streetLoadCount=0;
+let satelliteLoadCount=0;
+let streetSwitchTimer=null;
+let satelliteSwitchTimer=null;
+let mapLayerSwitching=false;
 
-/* Mulai langsung dengan OSM */
-streetPrimary.addTo(map);
+function removeStreetLayers(){
+  streetLayers.forEach(layerObj=>{
+    if(map.hasLayer(layerObj)) map.removeLayer(layerObj);
+  });
+}
 
-/* Jika OSM benar-benar gagal, pindah SATU KALI ke Esri Street.
-   Tidak melakukan redraw tanpa akhir karena itu dapat menghasilkan
-   halaman abu-abu ketika server tile sedang bermasalah. */
-streetPrimary.on("tileerror",()=>{
-  streetErrorCount++;
-  if(!satelliteOn && streetErrorCount >= 3 && activeStreet===streetPrimary){
-    activeStreet=streetFallback;
-    if(map.hasLayer(streetPrimary)) map.removeLayer(streetPrimary);
-    streetFallback.addTo(map);
-    status.textContent="Peta jalan dialihkan ke server cadangan...";
+function setActiveStreet(index,{announce=false}={}){
+  const safeIndex=((index%streetLayers.length)+streetLayers.length)%streetLayers.length;
+  const next=streetLayers[safeIndex];
+
+  mapLayerSwitching=true;
+  removeStreetLayers();
+  activeStreet=next;
+  streetIndex=safeIndex;
+  activeStreet.addTo(map);
+  activeStreet.bringToBack();
+  streetErrorCount=0;
+  streetLoadCount=0;
+
+  requestAnimationFrame(()=>{
+    map.invalidateSize({pan:false});
+    mapLayerSwitching=false;
+  });
+
+  if(announce){
+    status.textContent=
+      streetIndex===0
+        ? "Peta jalan memakai server Esri."
+        : "Peta jalan dialihkan ke OpenStreetMap.";
   }
+}
+
+function showStreet({announce=false}={}){
+  satelliteOn=false;
+  clearTimeout(satelliteSwitchTimer);
+
+  if(map.hasLayer(satellite)) map.removeLayer(satellite);
+  if(!map.hasLayer(activeStreet)) activeStreet.addTo(map);
+  activeStreet.bringToBack();
+
+  document.getElementById("satellite").textContent="🛰️ Satelit";
+  requestAnimationFrame(()=>map.invalidateSize({pan:false}));
+
+  if(announce) status.textContent="Peta jalan ditampilkan.";
+}
+
+function showSatellite(){
+  clearTimeout(streetSwitchTimer);
+  satelliteOn=true;
+  satelliteErrorCount=0;
+  satelliteLoadCount=0;
+
+  removeStreetLayers();
+  if(!map.hasLayer(satellite)) satellite.addTo(map);
+  satellite.bringToBack();
+
+  document.getElementById("satellite").textContent="🗺️ Peta Jalan";
+  requestAnimationFrame(()=>map.invalidateSize({pan:false}));
+}
+
+function scheduleStreetFallback(){
+  if(satelliteOn || mapLayerSwitching || streetErrorCount<5) return;
+  if(streetSwitchTimer) return;
+
+  streetSwitchTimer=setTimeout(()=>{
+    streetSwitchTimer=null;
+    if(satelliteOn || mapLayerSwitching || streetErrorCount<5) return;
+
+    if(streetLayers.length>1){
+      const nextIndex=(streetIndex+1)%streetLayers.length;
+      setActiveStreet(nextIndex,{announce:true});
+    }
+  },900);
+}
+
+streetLayers.forEach(layerObj=>{
+  layerObj.on("tileload",()=>{
+    if(layerObj===activeStreet && !satelliteOn){
+      streetLoadCount++;
+      /* Jika tile mulai berhasil, jangan langsung pindah hanya karena
+         beberapa kegagalan lama saat proses zoom. */
+      if(streetLoadCount>=2) streetErrorCount=0;
+    }
+  });
+
+  layerObj.on("tileerror",()=>{
+    if(layerObj!==activeStreet || satelliteOn || mapLayerSwitching) return;
+    streetErrorCount++;
+    scheduleStreetFallback();
+  });
+});
+
+satellite.on("tileload",()=>{
+  if(!satelliteOn) return;
+  satelliteLoadCount++;
+  if(satelliteLoadCount>=2) satelliteErrorCount=0;
 });
 
 satellite.on("tileerror",()=>{
+  if(!satelliteOn) return;
   satelliteErrorCount++;
-  if(satelliteErrorCount >= 3 && satelliteOn){
-    /* Jangan biarkan layar abu-abu. Kembalikan ke peta jalan yang aktif. */
-    satelliteOn=false;
-    if(map.hasLayer(satellite)) map.removeLayer(satellite);
-    activeStreet.addTo(map);
-    document.getElementById("satellite").textContent="🛰️ Satelit";
-    status.textContent="Satelit gagal dimuat. Peta jalan dikembalikan.";
+
+  if(satelliteErrorCount>=5 && !satelliteSwitchTimer){
+    satelliteSwitchTimer=setTimeout(()=>{
+      satelliteSwitchTimer=null;
+      if(satelliteOn && satelliteErrorCount>=5){
+        showStreet({announce:false});
+        status.textContent="Satelit tidak dapat dimuat. Peta jalan ditampilkan kembali.";
+      }
+    },900);
   }
 });
+
+/* Mulai dengan peta jalan utama. */
+setActiveStreet(0);
 
 /* =========================
    CLUSTER
@@ -1054,19 +1154,11 @@ document.getElementById("refresh").onclick=()=>{
    SATELIT / PETA JALAN
    ========================= */
 document.getElementById("satellite").onclick=()=>{
-  satelliteOn=!satelliteOn;
-
   if(satelliteOn){
-    satelliteErrorCount=0;
-    if(map.hasLayer(activeStreet)) map.removeLayer(activeStreet);
-    if(!map.hasLayer(satellite)) satellite.addTo(map);
-    document.getElementById("satellite").textContent="🗺️ Peta Jalan";
-    setTimeout(()=>map.invalidateSize({pan:false}),100);
+    showStreet({announce:true});
   }else{
-    if(map.hasLayer(satellite)) map.removeLayer(satellite);
-    if(!map.hasLayer(activeStreet)) activeStreet.addTo(map);
-    document.getElementById("satellite").textContent="🛰️ Satelit";
-    setTimeout(()=>map.invalidateSize({pan:false}),100);
+    showSatellite();
+    status.textContent="Memuat peta satelit...";
   }
 };
 
